@@ -1,0 +1,72 @@
+{
+  "name": "@drvillo/react-browser-e-signing",
+  "version": "0.1.0",
+  "description": "React PDF e-signing in the browser — fields, handwriting, pdf-lib",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/drvillo/react-browser-e-signing.git"
+  },
+  "homepage": "https://github.com/drvillo/react-browser-e-signing#readme",
+  "bugs": "https://github.com/drvillo/react-browser-e-signing/issues",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "postinstall": "pnpm run install:browsers",
+    "install:browsers": "playwright install chromium",
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "demo": "vite",
+    "demo:build": "vite build",
+    "test": "pnpm run test:unit && pnpm run test:browser",
+    "test:unit": "vitest run --config vitest.config.ts",
+    "test:browser": "vitest run --config vitest.browser.config.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "e-signature",
+    "pdf",
+    "sign",
+    "browser",
+    "react"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@pdf-lib/fontkit": "^1.1.1",
+    "pdf-lib": "^1.17.1",
+    "react-pdf": "^9.0.0",
+    "signature_pad": "^5.0.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.2",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^24.6.0",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.2",
+    "@vitest/browser-playwright": "^4.0.0",
+    "happy-dom": "^20.0.0",
+    "playwright": "^1.55.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "tailwindcss": "^4.1.13",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5",
+    "vitest": "^4.0.0"
+  }
+}
