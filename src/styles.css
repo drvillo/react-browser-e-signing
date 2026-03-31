@@ -1,0 +1,401 @@
+[data-slot='pdf-viewer'] {
+  display: grid;
+  gap: 1rem;
+}
+
+[data-slot='pdf-viewer-empty'] {
+  border: 1px dashed #cbd5e1;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  color: #64748b;
+  text-align: center;
+  padding: 2rem;
+}
+
+[data-slot='pdf-viewer-toolbar'] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: #ffffff;
+  padding: 0.75rem;
+}
+
+[data-slot='pdf-viewer-page-count'] {
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+[data-slot='pdf-viewer-zoom'] {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+[data-slot='pdf-viewer-zoom-button'] {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.375rem;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.875rem;
+  min-width: 2rem;
+  min-height: 1.9rem;
+  cursor: pointer;
+}
+
+[data-slot='pdf-viewer-zoom-button']:hover {
+  background: #f8fafc;
+}
+
+[data-slot='pdf-viewer-zoom-value'] {
+  width: 4rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+[data-slot='pdf-viewer-loading'] {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+[data-slot='pdf-viewer-error'] {
+  font-size: 0.875rem;
+  color: #dc2626;
+}
+
+[data-slot='pdf-viewer-pages'] {
+  display: grid;
+  gap: 1.5rem;
+}
+
+[data-slot='pdf-viewer-page'] {
+  border-radius: 0.375rem;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+  padding: 0.5rem;
+}
+
+[data-slot='field-palette'] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: #ffffff;
+  padding: 0.5rem;
+}
+
+[data-slot='field-palette-button'] {
+  border-radius: 0.375rem;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+[data-slot='field-palette-button']:hover {
+  background: #f1f5f9;
+}
+
+[data-slot='field-palette-button'][data-state='selected'] {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+[data-slot='signer-panel'] {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: #ffffff;
+  padding: 1rem;
+}
+
+[data-slot='signer-panel-heading'] {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+[data-slot='signer-panel-label'] {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+[data-slot='signer-panel-input'] {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.375rem;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 0.875rem;
+  padding: 0.4rem 0.5rem;
+}
+
+[data-slot='signature-preview'] {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: #ffffff;
+  padding: 1rem;
+}
+
+[data-slot='signature-preview-heading'] {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+[data-slot='signature-preview-mode-toggle'] {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+[data-slot='signature-preview-mode-button'] {
+  border-radius: 0.375rem;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+}
+
+[data-slot='signature-preview-mode-button'][data-state='active'] {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+[data-slot='signature-preview-font-label'] {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+[data-slot='signature-preview-font-select'] {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.375rem;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 0.875rem;
+  padding: 0.4rem 0.5rem;
+}
+
+[data-slot='signature-preview-display'] {
+  border: 1px dashed #cbd5e1;
+  border-radius: 0.375rem;
+  background: #f8fafc;
+  padding: 0.75rem;
+}
+
+[data-slot='signature-preview-placeholder'] {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+[data-slot='signature-preview-image'] {
+  display: block;
+  height: 6rem;
+  width: 100%;
+  object-fit: contain;
+}
+
+[data-slot='signature-pad'] {
+  display: grid;
+  gap: 0.5rem;
+}
+
+[data-slot='signature-pad-canvas'] {
+  display: block;
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.375rem;
+  background: #ffffff;
+}
+
+[data-slot='signature-pad-actions'] {
+  display: flex;
+  justify-content: flex-end;
+}
+
+[data-slot='signature-pad-clear'] {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.375rem;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.3rem 0.6rem;
+}
+
+[data-slot='signature-pad-clear']:hover {
+  background: #f8fafc;
+}
+
+[data-slot='signature-field'] {
+  border: 2px solid #3b82f6;
+  border-radius: 0.375rem;
+  background: rgba(239, 246, 255, 0.8);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.15);
+}
+
+[data-slot='signature-field-content'] {
+  gap: 0.5rem;
+  padding: 0.375rem;
+  color: #1e293b;
+  font-size: 11px;
+}
+
+[data-slot='signature-field-preview'] {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+[data-slot='signature-field-label'] {
+  text-transform: capitalize;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-slot='signature-field-preview-image'] {
+  margin-top: 0.25rem;
+  display: block;
+  height: calc(100% - 18px);
+  max-height: 100%;
+  width: 100%;
+  object-fit: contain;
+}
+
+[data-slot='signature-field-preview-text'] {
+  color: #475569;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-slot='signature-field-remove'] {
+  border: 0;
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.8);
+  color: #dc2626;
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+  cursor: pointer;
+}
+
+[data-slot='signature-field-remove']:hover {
+  background: #ffffff;
+}
+
+[data-slot='signature-field-resize'] {
+  border-radius: 9999px;
+  background: #2563eb;
+}
+
+[data-slot='signing-complete'] {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid #6ee7b7;
+  border-radius: 0.5rem;
+  background: #ecfdf5;
+  padding: 1rem;
+}
+
+[data-slot='signing-complete-heading'] {
+  margin: 0;
+  color: #064e3b;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+[data-slot='signing-complete-details'] {
+  display: grid;
+  gap: 0.25rem;
+  color: #064e3b;
+  font-size: 0.875rem;
+}
+
+[data-slot='signing-complete-details'] p {
+  margin: 0;
+}
+
+[data-slot='signing-complete-hash'] {
+  border: 1px solid #a7f3d0;
+  border-radius: 0.375rem;
+  background: #ffffff;
+  padding: 0.75rem;
+}
+
+[data-slot='signing-complete-hash-label'] {
+  margin: 0 0 0.25rem;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+[data-slot='signing-complete-hash-value'] {
+  margin: 0;
+  color: #1e293b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+[data-slot='signing-complete-actions'] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+[data-slot='signing-complete-download'] {
+  display: inline-block;
+  text-decoration: none;
+  border: 1px solid #047857;
+  border-radius: 0.375rem;
+  background: #047857;
+  color: #ffffff;
+  font-size: 0.875rem;
+  padding: 0.4rem 0.75rem;
+}
+
+[data-slot='signing-complete-download']:hover {
+  background: #065f46;
+  border-color: #065f46;
+}
+
+[data-slot='signing-complete-reset'] {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.375rem;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.875rem;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+}
+
+[data-slot='signing-complete-reset']:hover {
+  background: #f8fafc;
+}

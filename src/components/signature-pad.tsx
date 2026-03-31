@@ -1,11 +1,13 @@
 import SignaturePadLibrary from 'signature_pad'
 import { useEffect, useRef } from 'react'
+import { cn } from '../lib/cn'
 
 interface SignaturePadProps {
   onDrawn: (signatureDataUrl: string) => void
+  className?: string
 }
 
-export function SignaturePad({ onDrawn }: SignaturePadProps) {
+export function SignaturePad({ onDrawn, className }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const signaturePadRef = useRef<SignaturePadLibrary | null>(null)
 
@@ -41,12 +43,12 @@ export function SignaturePad({ onDrawn }: SignaturePadProps) {
   }
 
   return (
-    <div className="space-y-2">
-      <canvas ref={canvasRef} width={420} height={140} className="w-full rounded border border-slate-300 bg-white" />
-      <div className="flex justify-end">
+    <div data-slot="signature-pad" className={cn(className)}>
+      <canvas data-slot="signature-pad-canvas" ref={canvasRef} width={420} height={140} />
+      <div data-slot="signature-pad-actions">
         <button
           type="button"
-          className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+          data-slot="signature-pad-clear"
           onClick={handleClear}
         >
           Clear

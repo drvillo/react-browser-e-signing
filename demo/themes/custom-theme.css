@@ -1,0 +1,182 @@
+@import '../../src/styles.css';
+
+:root {
+  --esig-bg: #181825;
+  --esig-surface: #1e1e2e;
+  --esig-surface-2: #313244;
+  --esig-border: #45475a;
+  --esig-text: #cdd6f4;
+  --esig-muted: #a6adc8;
+  --esig-accent: #89b4fa;
+  --esig-accent-2: #74c7ec;
+  --esig-positive: #a6e3a1;
+  --esig-positive-ink: #0e2615;
+}
+
+[data-demo-slot='title'] {
+  color: var(--esig-text);
+}
+
+[data-demo-slot='subtitle'] {
+  color: var(--esig-muted);
+}
+
+[data-demo-slot='theme-toggle'] {
+  background: var(--esig-surface-2);
+  border-color: var(--esig-border);
+  color: var(--esig-text);
+}
+
+[data-demo-slot='theme-toggle']:hover {
+  background: #3f4057;
+}
+
+[data-demo-slot='upload-card'],
+[data-demo-slot='sign-card'] {
+  background: var(--esig-surface);
+  border-color: var(--esig-border);
+  border-radius: 0.8rem;
+}
+
+[data-demo-slot='upload-label'] {
+  color: var(--esig-muted);
+}
+
+[data-demo-slot='upload-input'] {
+  background: #11111b;
+  border-color: var(--esig-border);
+  color: var(--esig-text);
+}
+
+[data-demo-slot='upload-input']::file-selector-button {
+  background: var(--esig-surface-2);
+  border: 1px solid var(--esig-border);
+  color: var(--esig-text);
+  border-radius: 0.4rem;
+  margin-right: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+}
+
+[data-demo-slot='sign-button'] {
+  background: var(--esig-accent);
+  color: #11111b;
+}
+
+[data-demo-slot='sign-button']:disabled {
+  background: #6c7086;
+  color: #cdd6f4;
+}
+
+[data-slot='pdf-viewer-empty'],
+[data-slot='pdf-viewer-toolbar'],
+[data-slot='pdf-viewer-page'],
+[data-slot='field-palette'],
+[data-slot='signer-panel'],
+[data-slot='signature-preview'],
+[data-slot='signing-complete'],
+[data-slot='signing-complete-hash'] {
+  background: var(--esig-surface);
+  border-color: var(--esig-border);
+  color: var(--esig-text);
+  border-radius: 0.8rem;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+}
+
+[data-slot='pdf-viewer-page'] {
+  background: #0f1020;
+}
+
+[data-slot='pdf-viewer-page-count'],
+[data-slot='pdf-viewer-zoom-value'],
+[data-slot='signer-panel-label'],
+[data-slot='signature-preview-font-label'],
+[data-slot='signature-preview-placeholder'],
+[data-slot='signing-complete-hash-label'] {
+  color: var(--esig-muted);
+}
+
+[data-slot='pdf-viewer-zoom-button'],
+[data-slot='field-palette-button'],
+[data-slot='signature-preview-mode-button'],
+[data-slot='signature-pad-clear'],
+[data-slot='signing-complete-reset'] {
+  background: var(--esig-surface-2);
+  border-color: var(--esig-border);
+  color: var(--esig-text);
+}
+
+[data-slot='pdf-viewer-zoom-button']:hover,
+[data-slot='field-palette-button']:hover,
+[data-slot='signature-pad-clear']:hover,
+[data-slot='signing-complete-reset']:hover {
+  background: #3f4057;
+}
+
+[data-slot='field-palette-button'][data-state='selected'],
+[data-slot='signature-preview-mode-button'][data-state='active'] {
+  background: var(--esig-accent);
+  border-color: var(--esig-accent);
+  color: #11111b;
+}
+
+[data-slot='signer-panel-input'],
+[data-slot='signature-preview-font-select'] {
+  background: #11111b;
+  border-color: var(--esig-border);
+  color: var(--esig-text);
+}
+
+[data-slot='signature-preview-display'] {
+  background: #11111b;
+  border-color: var(--esig-border);
+}
+
+[data-slot='signature-pad-canvas'] {
+  background: #11111b;
+  border-color: var(--esig-border);
+}
+
+[data-slot='signature-field'] {
+  border-color: var(--esig-accent);
+  background: rgba(137, 180, 250, 0.22);
+}
+
+[data-slot='signature-field-label'],
+[data-slot='signature-field-preview-text'] {
+  color: var(--esig-text);
+}
+
+[data-slot='signature-field-remove'] {
+  background: rgba(17, 17, 27, 0.75);
+  color: #f38ba8;
+}
+
+[data-slot='signature-field-resize'] {
+  background: var(--esig-accent-2);
+}
+
+[data-slot='signing-complete'] {
+  border-color: #2d5c2b;
+  background: #122217;
+}
+
+[data-slot='signing-complete-heading'],
+[data-slot='signing-complete-details'] {
+  color: var(--esig-positive);
+}
+
+[data-slot='signing-complete-hash-value'] {
+  color: var(--esig-text);
+}
+
+[data-slot='signing-complete-download'] {
+  background: var(--esig-positive);
+  border-color: var(--esig-positive);
+  color: var(--esig-positive-ink);
+}
+
+[data-slot='signing-complete-download']:hover {
+  background: #8fcd8b;
+  border-color: #8fcd8b;
+}

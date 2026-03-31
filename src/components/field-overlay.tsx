@@ -1,6 +1,7 @@
 import type { FieldPlacement, FieldType, SignatureFieldPreview } from '../types'
 import { SignatureField } from './signature-field'
 import type { PointerEvent } from 'react'
+import { cn } from '../lib/cn'
 
 interface FieldOverlayProps {
   pageIndex: number
@@ -10,6 +11,7 @@ interface FieldOverlayProps {
   onUpdateField: (fieldId: string, partial: Partial<FieldPlacement>) => void
   onRemoveField: (fieldId: string) => void
   preview: SignatureFieldPreview
+  className?: string
 }
 
 export function FieldOverlay({
@@ -20,6 +22,7 @@ export function FieldOverlay({
   onUpdateField,
   onRemoveField,
   preview,
+  className,
 }: FieldOverlayProps) {
   function handleOverlayPointerDown(event: PointerEvent<HTMLDivElement>): void {
     if (!selectedFieldType) return
@@ -40,7 +43,15 @@ export function FieldOverlay({
 
   return (
     <div
-      className={`absolute inset-0 z-20 rounded ${selectedFieldType ? 'cursor-crosshair' : 'cursor-default'}`}
+      data-slot="field-overlay"
+      data-state={selectedFieldType ? 'placing' : 'idle'}
+      className={cn(className)}
+      style={{
+        position: 'absolute',
+        inset: 0,
+        zIndex: 20,
+        cursor: selectedFieldType ? 'crosshair' : 'default',
+      }}
       onPointerDown={handleOverlayPointerDown}
       aria-label={`Field overlay page ${pageIndex + 1}`}
     >

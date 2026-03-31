@@ -21,6 +21,13 @@ interface SignedDocumentState {
   signedAt: string
 }
 
+type DemoTheme = 'default' | 'custom'
+
+const THEME_FILE_MAP: Record<DemoTheme, string> = {
+  default: '/themes/default-theme.css',
+  custom: '/themes/custom-theme.css',
+}
+
 function signerDisplayName(signerInfo: SignerInfo): string {
   return [signerInfo.firstName, signerInfo.lastName].filter(Boolean).join(' ').trim()
 }
@@ -38,6 +45,7 @@ function todayDateText(): string {
 }
 
 export function App() {
+  const [theme, setTheme] = useState<DemoTheme>('default')
   const [pdfInput, setPdfInput] = useState<File | null>(null)
   const [selectedFieldType, setSelectedFieldType] = useState<FieldType | null>(null)
   const [signerInfo, setSignerInfo] = useState<SignerInfo>(createDefaultSigner())
@@ -86,6 +94,21 @@ export function App() {
     if (!signedDocument) return
     return () => URL.revokeObjectURL(signedDocument.downloadUrl)
   }, [signedDocument])
+
+  useEffect(() => {
+    const linkId = 'esig-theme-link'
+    let linkElement = document.getElementById(linkId) as HTMLLinkElement | null
+
+    if (!linkElement) {
+      linkElement = document.createElement('link')
+      linkElement.id = linkId
+      linkElement.rel = 'stylesheet'
+      document.head.appendChild(linkElement)
+    }
+
+    linkElement.href = THEME_FILE_MAP[theme]
+    document.body.dataset.theme = theme
+  }, [theme])
 
   async function handleSignDocument(): Promise<void> {
     if (!pdfInput) {
@@ -153,18 +176,34 @@ export function App() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-4 p-4 md:p-6">
-      <header className="space-y-1">
-        <h1 className="text-xl font-semibold text-slate-900">Browser E-Signature Demo</h1>
-        <p className="text-sm text-slate-600">Upload, place fields, sign, and download fully in-browser.</p>
+    <div data-demo-slot="shell" className="mx-auto w-full max-w-[1400px] space-y-4 p-4 md:p-6">
+      <header data-demo-slot="header" className="space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <h1 data-demo-slot="title" className="text-xl font-semibold text-slate-900">
+            Browser E-Signature Demo
+          </h1>
+          <button
+            type="button"
+            data-demo-slot="theme-toggle"
+            className="rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            onClick={() => setTheme(theme === 'default' ? 'custom' : 'default')}
+          >
+            Theme: {theme === 'default' ? 'Default' : 'Custom'}
+          </button>
+        </div>
+        <p data-demo-slot="subtitle" className="text-sm text-slate-600">
+          Upload, place fields, sign, and download fully in-browser. Toggle themes to verify style-agnostic library
+          components.
+        </p>
       </header>
 
-      <div className="rounded-lg border border-slate-300 bg-white p-4">
-        <label className="block text-sm font-medium text-slate-700">
+      <div data-demo-slot="upload-card" className="rounded-lg border border-slate-300 bg-white p-4">
+        <label data-demo-slot="upload-label" className="block text-sm font-medium text-slate-700">
           Upload PDF
           <input
             type="file"
             accept="application/pdf"
+            data-demo-slot="upload-input"
             className="mt-2 block w-full rounded border border-slate-300 p-2 text-sm"
             onChange={(event) => {
               const nextFile = event.target.files?.[0] ?? null
@@ -222,9 +261,10 @@ export function App() {
             onStyleChange={setSignatureStyle}
           />
 
-          <div className="rounded-lg border border-slate-300 bg-white p-4">
+          <div data-demo-slot="sign-card" className="rounded-lg border border-slate-300 bg-white p-4">
             <button
               type="button"
+              data-demo-slot="sign-button"
               className="w-full rounded bg-blue-700 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
               onClick={() => void handleSignDocument()}
               disabled={isSigning || !pdfInput || !fields.length}

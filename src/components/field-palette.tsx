@@ -1,8 +1,10 @@
 import type { FieldType } from '../types'
+import { cn } from '../lib/cn'
 
 interface FieldPaletteProps {
   selectedFieldType: FieldType | null
   onSelectFieldType: (fieldType: FieldType | null) => void
+  className?: string
 }
 
 const FIELD_LABELS: Record<FieldType, string> = {
@@ -14,20 +16,17 @@ const FIELD_LABELS: Record<FieldType, string> = {
 
 const FIELD_TYPES: FieldType[] = ['signature', 'fullName', 'title', 'date']
 
-export function FieldPalette({ selectedFieldType, onSelectFieldType }: FieldPaletteProps) {
+export function FieldPalette({ selectedFieldType, onSelectFieldType, className }: FieldPaletteProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-300 bg-white p-2">
+    <div data-slot="field-palette" className={cn(className)}>
       {FIELD_TYPES.map((fieldType) => {
         const isSelected = selectedFieldType === fieldType
         return (
           <button
             key={fieldType}
             type="button"
-            className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
-              isSelected
-                ? 'border-blue-600 bg-blue-600 text-white'
-                : 'border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100'
-            }`}
+            data-slot="field-palette-button"
+            data-state={isSelected ? 'selected' : 'idle'}
             onClick={() => onSelectFieldType(isSelected ? null : fieldType)}
             aria-pressed={isSelected}
           >

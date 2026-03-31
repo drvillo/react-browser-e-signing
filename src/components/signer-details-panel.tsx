@@ -1,11 +1,13 @@
 import type { SignerInfo } from '../types'
+import { cn } from '../lib/cn'
 
 interface SignerDetailsPanelProps {
   signerInfo: SignerInfo
   onSignerInfoChange: (nextSignerInfo: SignerInfo) => void
+  className?: string
 }
 
-export function SignerDetailsPanel({ signerInfo, onSignerInfoChange }: SignerDetailsPanelProps) {
+export function SignerDetailsPanel({ signerInfo, onSignerInfoChange, className }: SignerDetailsPanelProps) {
   function handleInputChange(fieldName: keyof SignerInfo, fieldValue: string): void {
     onSignerInfoChange({
       ...signerInfo,
@@ -14,31 +16,31 @@ export function SignerDetailsPanel({ signerInfo, onSignerInfoChange }: SignerDet
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-slate-300 bg-white p-4">
-      <h2 className="text-sm font-semibold text-slate-800">Signer Details</h2>
+    <div data-slot="signer-panel" className={cn(className)}>
+      <h2 data-slot="signer-panel-heading">Signer Details</h2>
 
-      <label className="block text-sm text-slate-700">
+      <label data-slot="signer-panel-label">
         First Name
         <input
-          className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+          data-slot="signer-panel-input"
           value={signerInfo.firstName}
           onChange={(event) => handleInputChange('firstName', event.target.value)}
         />
       </label>
 
-      <label className="block text-sm text-slate-700">
+      <label data-slot="signer-panel-label">
         Last Name
         <input
-          className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+          data-slot="signer-panel-input"
           value={signerInfo.lastName}
           onChange={(event) => handleInputChange('lastName', event.target.value)}
         />
       </label>
 
-      <label className="block text-sm text-slate-700">
+      <label data-slot="signer-panel-label">
         Title
         <input
-          className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+          data-slot="signer-panel-input"
           value={signerInfo.title}
           onChange={(event) => handleInputChange('title', event.target.value)}
         />

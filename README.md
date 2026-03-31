@@ -21,6 +21,7 @@ pnpm add @drvillo/react-browser-e-signing
 
 ```tsx
 import { defaults, modifyPdf, sha256, useFieldPlacement } from '@drvillo/react-browser-e-signing'
+import '@drvillo/react-browser-e-signing/styles.css'
 ```
 
 Use the demo app for a complete end-to-end integration:
@@ -67,18 +68,46 @@ pnpm demo
 - `SigningResult`
 - `PdfPageDimensions`
 
-## Tailwind Consumer Setup
+## Styling and Theming
 
-This package ships Tailwind classes in components. Add the package path to your Tailwind content scan:
+Library components are style-agnostic:
 
-```js
-// tailwind.config.js
-export default {
-  content: [
-    './src/**/*.{ts,tsx}',
-    './node_modules/@drvillo/react-browser-e-signing/src/**/*.{ts,tsx}',
-  ],
+- components expose `data-slot` attributes for all key DOM parts
+- stateful elements expose `data-state`
+- each component root accepts `className`
+- no Tailwind setup is required in consumer apps
+
+### Option 1: Use default styles
+
+```tsx
+import '@drvillo/react-browser-e-signing/styles.css'
+```
+
+### Option 2: Bring your own styles
+
+Skip the default stylesheet and target slots from your app CSS:
+
+```css
+[data-slot='field-palette-button'] {
+  border-radius: 999px;
+  border: 1px solid #111827;
+  background: #ffffff;
 }
+
+[data-slot='field-palette-button'][data-state='selected'] {
+  background: #111827;
+  color: #ffffff;
+}
+```
+
+### Slot constants
+
+Use exported slot constants to avoid string literals:
+
+```tsx
+import { SLOTS } from '@drvillo/react-browser-e-signing'
+
+const selector = `[data-slot="${SLOTS.fieldPaletteButton}"]`
 ```
 
 ## Development Scripts
@@ -96,6 +125,7 @@ pnpm typecheck
 
 - `PdfViewer` sets `react-pdf` worker from CDN by default using the runtime PDF.js version.
 - Browser test config skips execution when Playwright Chromium is not available in the environment.
+- Demo theme switcher (`default` / `custom`) shows how a container app can fully re-theme the same components.
 
 ## Limitations
 

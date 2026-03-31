@@ -1,5 +1,6 @@
 import { Document, Page, pdfjs } from 'react-pdf'
 import type { ReactNode } from 'react'
+import { cn } from '../lib/cn'
 
 if (typeof window !== 'undefined') {
   pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
@@ -13,6 +14,7 @@ interface PdfViewerProps {
   onDocumentLoadSuccess: (numPages: number) => void
   onPageDimensions: (input: { pageIndex: number; widthPt: number; heightPt: number }) => void
   renderOverlay?: (pageIndex: number) => ReactNode
+  className?: string
 }
 
 const MIN_SCALE = 0.5
@@ -27,30 +29,31 @@ export function PdfViewer({
   onDocumentLoadSuccess,
   onPageDimensions,
   renderOverlay,
+  className,
 }: PdfViewerProps) {
   if (!pdfData)
     return (
-      <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">
+      <div data-slot="pdf-viewer-empty" className={cn(className)}>
         Upload a PDF to begin
       </div>
     )
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between rounded-lg border border-slate-300 bg-white p-3">
-        <div className="text-sm text-slate-700">Pages: {numPages || '—'}</div>
-        <div className="flex items-center gap-2">
+    <div data-slot="pdf-viewer" className={cn(className)}>
+      <div data-slot="pdf-viewer-toolbar">
+        <div data-slot="pdf-viewer-page-count">Pages: {numPages || '—'}</div>
+        <div data-slot="pdf-viewer-zoom">
           <button
             type="button"
-            className="rounded border border-slate-300 px-2 py-1 text-sm hover:bg-slate-50"
+            data-slot="pdf-viewer-zoom-button"
             onClick={() => onScaleChange(Math.max(MIN_SCALE, Number((scale - SCALE_STEP).toFixed(2))))}
           >
             -
           </button>
-          <span className="w-16 text-center text-sm text-slate-700">{Math.round(scale * 100)}%</span>
+          <span data-slot="pdf-viewer-zoom-value">{Math.round(scale * 100)}%</span>
           <button
             type="button"
-            className="rounded border border-slate-300 px-2 py-1 text-sm hover:bg-slate-50"
+            data-slot="pdf-viewer-zoom-button"
             onClick={() => onScaleChange(Math.min(MAX_SCALE, Number((scale + SCALE_STEP).toFixed(2))))}
           >
             +
@@ -61,12 +64,16 @@ export function PdfViewer({
       <Document
         file={pdfData}
         onLoadSuccess={(loadedPdf) => onDocumentLoadSuccess(loadedPdf.numPages)}
-        loading={<div className="text-sm text-slate-500">Loading PDF...</div>}
-        error={<div className="text-sm text-red-600">Unable to render this PDF.</div>}
+        loading={<div data-slot="pdf-viewer-loading">Loading PDF...</div>}
+        error={<div data-slot="pdf-viewer-error">Unable to render this PDF.</div>}
       >
-        <div className="space-y-6">
+        <div data-slot="pdf-viewer-pages">
           {Array.from({ length: numPages }, (_, pageIndex) => (
-            <div key={`pdf-page-${pageIndex}`} className="relative mx-auto w-fit rounded bg-white p-2 shadow">
+            <div
+              key={`pdf-page-${pageIndex}`}
+              data-slot="pdf-viewer-page"
+              style={{ position: 'relative', margin: '0 auto', width: 'fit-content' }}
+            >
               <Page
                 pageNumber={pageIndex + 1}
                 scale={scale}

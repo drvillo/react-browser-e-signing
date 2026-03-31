@@ -15,6 +15,7 @@ export { modifyPdf } from './lib/pdf-modifier'
 export { mapToPoints, mapFromPoints } from './lib/coordinate-mapper'
 export { loadSignatureFont, SIGNATURE_FONTS } from './lib/signature-fonts'
 export { sha256 } from './lib/hash'
+export { SLOTS } from './lib/slots'
 
 export type {
   FieldPlacement,

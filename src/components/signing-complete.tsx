@@ -1,3 +1,5 @@
+import { cn } from '../lib/cn'
+
 interface SigningCompleteProps {
   signerName: string
   fieldCount: number
@@ -6,6 +8,7 @@ interface SigningCompleteProps {
   downloadUrl: string
   fileName?: string
   onReset: () => void
+  className?: string
 }
 
 export function SigningComplete({
@@ -16,32 +19,33 @@ export function SigningComplete({
   downloadUrl,
   fileName = 'signed-document.pdf',
   onReset,
+  className,
 }: SigningCompleteProps) {
   return (
-    <div className="space-y-4 rounded-lg border border-emerald-300 bg-emerald-50 p-4">
-      <h2 className="text-base font-semibold text-emerald-900">Document Signed</h2>
-      <div className="space-y-1 text-sm text-emerald-900">
+    <div data-slot="signing-complete" className={cn(className)}>
+      <h2 data-slot="signing-complete-heading">Document Signed</h2>
+      <div data-slot="signing-complete-details">
         <p>Signer: {signerName || 'Unknown'}</p>
         <p>Fields applied: {fieldCount}</p>
         <p>Signed at: {signedAt}</p>
       </div>
 
-      <div className="rounded border border-emerald-200 bg-white p-3">
-        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">SHA-256</p>
-        <p className="break-all font-mono text-xs text-slate-800">{documentHash}</p>
+      <div data-slot="signing-complete-hash">
+        <p data-slot="signing-complete-hash-label">SHA-256</p>
+        <p data-slot="signing-complete-hash-value">{documentHash}</p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div data-slot="signing-complete-actions">
         <a
           href={downloadUrl}
           download={fileName}
-          className="rounded bg-emerald-700 px-3 py-1.5 text-sm text-white hover:bg-emerald-800"
+          data-slot="signing-complete-download"
         >
           Download Signed PDF
         </a>
         <button
           type="button"
-          className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+          data-slot="signing-complete-reset"
           onClick={onReset}
         >
           Sign Another

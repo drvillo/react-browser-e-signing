@@ -1,12 +1,14 @@
 import { useRef } from 'react'
 import type { FieldPlacement, SignatureFieldPreview } from '../types'
 import type { PointerEvent } from 'react'
+import { cn } from '../lib/cn'
 
 interface SignatureFieldProps {
   field: FieldPlacement
   onUpdateField: (fieldId: string, partial: Partial<FieldPlacement>) => void
   onRemoveField: (fieldId: string) => void
   preview: SignatureFieldPreview
+  className?: string
 }
 
 interface DragState {
@@ -39,7 +41,7 @@ function getFieldPreviewText(field: FieldPlacement, preview: SignatureFieldPrevi
   return ''
 }
 
-export function SignatureField({ field, onUpdateField, onRemoveField, preview }: SignatureFieldProps) {
+export function SignatureField({ field, onUpdateField, onRemoveField, preview, className }: SignatureFieldProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)
   const dragStateRef = useRef<DragState | null>(null)
   const resizeStateRef = useRef<ResizeState | null>(null)
@@ -130,34 +132,47 @@ export function SignatureField({ field, onUpdateField, onRemoveField, preview }:
   return (
     <div
       ref={rootRef}
-      className="absolute rounded border-2 border-blue-500 bg-blue-50/80 shadow-sm select-none"
+      data-slot="signature-field"
+      data-field-type={field.type}
+      className={cn(className)}
       style={{
+        position: 'absolute',
         left: `${field.xPercent}%`,
         top: `${field.yPercent}%`,
         width: `${field.widthPercent}%`,
         height: `${field.heightPercent}%`,
+        userSelect: 'none',
       }}
       onPointerDown={handleDragPointerDown}
       onPointerMove={handleDragPointerMove}
       onPointerUp={handleDragPointerUp}
     >
-      <div className="flex h-full w-full items-start justify-between gap-2 p-1.5 text-[11px] text-slate-800">
-        <div className="min-w-0 flex-1 overflow-hidden">
-          <div className="truncate font-semibold capitalize">{field.type}</div>
+      <div
+        data-slot="signature-field-content"
+        style={{
+          display: 'flex',
+          height: '100%',
+          width: '100%',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+        }}
+      >
+        <div data-slot="signature-field-preview">
+          <div data-slot="signature-field-label">{field.type}</div>
           {field.type === 'signature' && preview.signatureDataUrl ? (
             <img
+              data-slot="signature-field-preview-image"
               src={preview.signatureDataUrl}
               alt="signature preview"
-              className="mt-1 h-[calc(100%-18px)] max-h-full w-full object-contain"
               draggable={false}
             />
           ) : (
-            <div className="truncate text-slate-600">{previewText || '—'}</div>
+            <div data-slot="signature-field-preview-text">{previewText || '—'}</div>
           )}
         </div>
         <button
           type="button"
-          className="rounded bg-white/80 px-1 text-xs text-red-600 hover:bg-white"
+          data-slot="signature-field-remove"
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => {
             event.stopPropagation()
@@ -170,7 +185,15 @@ export function SignatureField({ field, onUpdateField, onRemoveField, preview }:
       </div>
 
       <div
-        className="absolute -bottom-1.5 -right-1.5 h-3 w-3 cursor-nwse-resize rounded-full bg-blue-600"
+        data-slot="signature-field-resize"
+        style={{
+          position: 'absolute',
+          right: '-0.375rem',
+          bottom: '-0.375rem',
+          width: '0.75rem',
+          height: '0.75rem',
+          cursor: 'nwse-resize',
+        }}
         onPointerDown={handleResizePointerDown}
         onPointerMove={handleResizePointerMove}
         onPointerUp={handleResizePointerUp}
