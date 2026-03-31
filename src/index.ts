@@ -1,3 +1,5 @@
+import { loadSignatureFont, SIGNATURE_FONTS } from './lib/signature-fonts'
+
 export { PdfViewer } from './components/pdf-viewer'
 export { FieldOverlay } from './components/field-overlay'
 export { SignatureField } from './components/signature-field'
@@ -13,7 +15,7 @@ export { useSignatureRenderer } from './hooks/use-signature-renderer'
 
 export { modifyPdf } from './lib/pdf-modifier'
 export { mapToPoints, mapFromPoints } from './lib/coordinate-mapper'
-export { loadSignatureFont, SIGNATURE_FONTS } from './lib/signature-fonts'
+export { loadSignatureFont, SIGNATURE_FONTS }
 export { sha256 } from './lib/hash'
 export { SLOTS } from './lib/slots'
 
@@ -28,7 +30,7 @@ export type {
 } from './types'
 
 export const defaults = {
-  SIGNATURE_FONTS: ['Dancing Script', 'Great Vibes', 'Sacramento', 'Alex Brush'],
+  SIGNATURE_FONTS: [...SIGNATURE_FONTS],
   DEFAULT_FIELD_WIDTH_PERCENT: 25,
   DEFAULT_FIELD_HEIGHT_PERCENT: 5,
 } as const

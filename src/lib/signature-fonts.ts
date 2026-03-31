@@ -1,6 +1,13 @@
 const loadedFonts = new Set<string>()
 
-export const SIGNATURE_FONTS = ['Dancing Script', 'Great Vibes', 'Sacramento', 'Alex Brush'] as const
+export const SIGNATURE_FONTS = [
+  'Caveat',
+  'Homemade Apple',
+  'Reenie Beanie',
+  'Mr Dafoe',
+  'Pacifico',
+  'Qwitcher Grypen',
+] as const
 
 function buildGoogleFontsCssUrl(family: string): string {
   const encoded = family.trim().replace(/\s+/g, '+')

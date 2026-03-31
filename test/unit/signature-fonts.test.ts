@@ -7,7 +7,7 @@ describe('signature fonts', () => {
   })
 
   it('builds google fonts css url', () => {
-    expect(buildSignatureFontCssUrl('Dancing Script')).toContain('family=Dancing+Script')
+    expect(buildSignatureFontCssUrl('Caveat')).toContain('family=Caveat')
   })
 
   it('loads font from css definition', async () => {
@@ -19,7 +19,7 @@ describe('signature fonts', () => {
       text: () =>
         Promise.resolve(`
           @font-face {
-            font-family: "Dancing Script";
+            font-family: "Caveat";
             src: url(https://fonts.gstatic.com/s/test.woff2) format('woff2');
           }
         `),
@@ -38,7 +38,7 @@ describe('signature fonts', () => {
       configurable: true,
     })
 
-    await loadSignatureFont('Dancing Script')
+    await loadSignatureFont('Caveat')
     expect(loadMock).toHaveBeenCalled()
     expect(addMock).toHaveBeenCalled()
   })

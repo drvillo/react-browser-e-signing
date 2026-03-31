@@ -15,9 +15,14 @@ function mockCanvasForTypedRendering(): void {
     const context = {
       font: '',
       fillStyle: '',
+      textAlign: '',
       textBaseline: '',
-      measureText: () => ({ width: 220 }),
+      measureText: () => ({ width: 14 }),
       clearRect: () => undefined,
+      save: () => undefined,
+      restore: () => undefined,
+      translate: () => undefined,
+      rotate: () => undefined,
       fillText: () => undefined,
     }
 
@@ -41,7 +46,7 @@ describe('useSignatureRenderer', () => {
     const { result } = renderHook(() =>
       useSignatureRenderer({
         signerName: 'Jane Doe',
-        style: { mode: 'typed', fontFamily: 'Dancing Script' },
+        style: { mode: 'typed', fontFamily: 'Caveat' },
       })
     )
 
@@ -70,7 +75,7 @@ describe('useSignatureRenderer', () => {
     const { result } = renderHook(() =>
       useSignatureRenderer({
         signerName: '   ',
-        style: { mode: 'typed', fontFamily: 'Dancing Script' },
+        style: { mode: 'typed', fontFamily: 'Caveat' },
       })
     )
 
