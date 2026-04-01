@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.0
+
+### Added
+
+- **Bundled PDF.js worker:** `pdf.worker.min.mjs` is shipped under `dist/` and included in the published package (same `pdfjs-dist` build as `react-pdf`).
+- **`getPdfWorkerSrc()`** via subpath export `@drvillo/react-browser-e-signing/worker` — returns a bundler-safe URL using `new URL('./pdf.worker.min.mjs', import.meta.url)`.
+- Subpath export `./pdf.worker.min.mjs` for direct raw-file access (e.g. `?url` imports).
+- `verify:worker` script and `prepublishOnly` hook to assert the worker exists and `devDependency` `pdfjs-dist` matches `react-pdf`’s `pdfjs-dist` version.
+- Build copies assets after tsup (`scripts/copy-dist-assets.mjs`) so `dist/worker.d.mts` and `pdf.worker.min.mjs` are present in the tarball; demo runs `sync-worker-to-dev.mjs` before Vite so `worker/pdf.worker.min.mjs` sits next to `worker/index.mjs` locally.
+
+### Changed
+
+- README: bundled worker is the primary integration path; CSP, versioning, SSR/Next.js, manual copy fallback, and advanced `?url` import documented.
+
+### Notes
+
+- **Non-breaking:** `configure()` without `pdfWorkerSrc` still does not inject a worker URL; consumers must opt in via `getPdfWorkerSrc()` or another URL.
+
 ## 0.1.3
 
 ### Changed

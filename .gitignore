@@ -3,6 +3,9 @@ node_modules
 dist
 dist-demo
 
+# Copied next to worker/index.mjs for local demo (same layout as published dist/)
+worker/pdf.worker.min.mjs
+
 .env
 .env.*
 !.env.example

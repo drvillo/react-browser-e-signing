@@ -11,5 +11,4 @@ export default defineConfig({
   minify: false,
   target: 'es2020',
   external: ['react', 'react-dom'],
-  onSuccess: 'cp "src/styles.css" "dist/styles.css"',
 })

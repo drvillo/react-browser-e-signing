@@ -62,6 +62,7 @@ pnpm demo
 ### Configuration
 
 - `configure(options)` — PDF worker URL, signature font mode (`network` | `local-only`), optional `fontUrlResolver`, optional `onWarning` callback
+- `getPdfWorkerSrc()` — from `@drvillo/react-browser-e-signing/worker`; returns a bundler-resolved URL for the packaged `pdf.worker.min.mjs` (recommended default for `pdfWorkerSrc`)
 - Types: `ESigningConfig`, `SignatureFontWarning`
 
 ### Types
@@ -126,9 +127,11 @@ pnpm test
 pnpm typecheck
 ```
 
+After a fresh clone, run **`pnpm build` once** so `dist/` includes the bundled worker, `worker.mjs`, and types (the copy step runs after tsup’s type emit).
+
 ## Notes
 
-- **PDF worker:** the package does **not** inject a third-party worker URL. Set `configure({ pdfWorkerSrc })` and/or `<PdfViewer workerSrc="..." />` so PDF.js can load a worker (recommended for production). See **Production hardening** below.
+- **PDF worker:** PDF.js **must** load its worker from a URL. This package ships `pdf.worker.min.mjs` built from the same `pdfjs-dist` version as `react-pdf` (see **Bundled PDF.js worker** below). The package does **not** inject a CDN URL by default; call `configure({ pdfWorkerSrc: getPdfWorkerSrc() })` or set `workerSrc` on `PdfViewer` so the worker loads (recommended for production). See **Production hardening** below.
 - Browser test config skips execution when Playwright Chromium is not available in the environment.
 - Demo theme switcher (`default` / `custom`) shows how a container app can fully re-theme the same components.
 
@@ -136,29 +139,58 @@ pnpm typecheck
 
 Runtime calls to external CDNs (PDF.js worker, Google Fonts) often fail in real apps: **CSP** (`worker-src`, `connect-src`, `font-src`), ad blockers, corporate proxies, or offline users. They also add noisy console errors (`Failed to fetch`) even when the rest of the UI works. This library defaults to **no injected worker URL** and lets you control loading explicitly.
 
-### Self-hosted PDF.js worker (recommended)
+### Bundled PDF.js worker (recommended)
 
-Copy the worker file that matches your installed `pdfjs-dist` (same major/minor as `react-pdf` / PDF.js):
+The npm package includes `pdf.worker.min.mjs` at the same path layout as `react-pdf`’s `pdfjs-dist` dependency, so you do **not** need unpkg or a manual copy script for the default flow.
+
+Configure once (e.g. app entry or a client-only module):
+
+```tsx
+import { configure } from '@drvillo/react-browser-e-signing'
+import { getPdfWorkerSrc } from '@drvillo/react-browser-e-signing/worker'
+
+configure({ pdfWorkerSrc: getPdfWorkerSrc() })
+```
+
+`getPdfWorkerSrc()` uses `new URL('./pdf.worker.min.mjs', import.meta.url)` so Vite, webpack 5, and similar bundlers emit the worker as an asset and rewrite the URL. **Do not** point at a third-party CDN in production if you can avoid it.
+
+Or per viewer:
+
+```tsx
+import { getPdfWorkerSrc } from '@drvillo/react-browser-e-signing/worker'
+
+<PdfViewer workerSrc={getPdfWorkerSrc()} {...pdfViewerProps} />
+```
+
+`workerSrc` on `PdfViewer` overrides `configure({ pdfWorkerSrc })`.
+
+**Advanced:** import the raw file (e.g. Vite):
+
+```tsx
+import workerUrl from '@drvillo/react-browser-e-signing/pdf.worker.min.mjs?url'
+
+configure({ pdfWorkerSrc: workerUrl })
+```
+
+**Versioning:** when this library upgrades `react-pdf` / `pdfjs-dist`, the published worker file is regenerated from that `pdfjs-dist` version. Keep your app on the published package version you intend; do not mix a different `pdfjs-dist` worker binary with another API version.
+
+**SSR / Next.js App Router:** PDF.js runs in the browser. Set `pdfWorkerSrc` only on the client — e.g. in `useEffect`, or in a file loaded via `dynamic(..., { ssr: false })`, or in a client-only entry — so `getPdfWorkerSrc()` and worker loading are not evaluated during SSR.
+
+### Manual self-host (fallback)
+
+If you prefer serving the worker from your own `public/` folder, copy the file that matches the `pdfjs-dist` version used by `react-pdf` (see `node_modules/react-pdf/package.json`):
 
 ```bash
 cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/pdf.worker.min.mjs
 ```
 
-Then configure once (e.g. in your app entry or root layout client component):
+Then:
 
 ```tsx
 import { configure } from '@drvillo/react-browser-e-signing'
 
 configure({ pdfWorkerSrc: '/pdf.worker.min.mjs' })
 ```
-
-Or per viewer:
-
-```tsx
-<PdfViewer workerSrc="/pdf.worker.min.mjs" {...pdfViewerProps} />
-```
-
-`workerSrc` on `PdfViewer` overrides `configure({ pdfWorkerSrc })`.
 
 ### Typed signatures: local-only fonts (no network)
 
@@ -194,13 +226,13 @@ Warnings are non-throwing; signing flow should remain usable.
 
 ### CSP-oriented example
 
-If everything is same-origin:
+If everything is same-origin (including the worker URL after your bundler emits it):
 
 ```
 Content-Security-Policy: worker-src 'self'; script-src 'self'; connect-src 'self'; font-src 'self';
 ```
 
-Adjust `connect-src` / `font-src` if you still use Google Fonts or a CDN for the worker.
+A self-hosted worker loaded from the same origin as your app typically satisfies `worker-src 'self'`. Adjust `connect-src` / `font-src` if you still use Google Fonts or load scripts from elsewhere.
 
 ### Migration from v0.1.2 and earlier
 
