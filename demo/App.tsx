@@ -1,5 +1,8 @@
+/// <reference types="vite/client" />
 import { useEffect, useMemo, useState } from 'react'
+import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import {
+  configure,
   FieldOverlay,
   FieldPalette,
   PdfViewer,
@@ -13,6 +16,8 @@ import {
   usePdfDocument,
   useSignatureRenderer,
 } from '../src/index'
+
+configure({ pdfWorkerSrc })
 import type { FieldType, SignatureFieldPreview, SignatureStyle, SignerInfo, SigningResult } from '../src/types'
 
 interface SignedDocumentState {

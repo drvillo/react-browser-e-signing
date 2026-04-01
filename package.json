@@ -1,6 +1,6 @@
 {
   "name": "@drvillo/react-browser-e-signing",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "React PDF e-signing in the browser — fields, handwriting, pdf-lib",
   "repository": {
     "type": "git",
@@ -66,6 +66,7 @@
     "@vitejs/plugin-react": "^5.0.2",
     "@vitest/browser-playwright": "^4.0.0",
     "happy-dom": "^20.0.0",
+    "pdfjs-dist": "4.8.69",
     "playwright": "^1.55.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

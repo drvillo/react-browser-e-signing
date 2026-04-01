@@ -1,5 +1,8 @@
 import { loadSignatureFont, SIGNATURE_FONTS } from './lib/signature-fonts'
 
+export { configure } from './lib/config'
+export type { ESigningConfig, SignatureFontWarning } from './lib/config'
+
 export { PdfViewer } from './components/pdf-viewer'
 export { FieldOverlay } from './components/field-overlay'
 export { SignatureField } from './components/signature-field'

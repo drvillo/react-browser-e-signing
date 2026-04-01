@@ -1,5 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { loadSignatureFont } from '../../src/lib/signature-fonts'
 import { useSignatureRenderer } from '../../src/hooks/use-signature-renderer'
 
 vi.mock('../../src/lib/signature-fonts', () => ({
@@ -81,6 +82,23 @@ describe('useSignatureRenderer', () => {
 
     await waitFor(() => {
       expect(result.current.signatureDataUrl).toBeNull()
+      expect(result.current.isRendering).toBe(false)
+    })
+  })
+
+  it('still produces typed signature PNG when loadSignatureFont rejects', async () => {
+    mockCanvasForTypedRendering()
+    vi.mocked(loadSignatureFont).mockRejectedValueOnce(new Error('Failed to fetch'))
+
+    const { result } = renderHook(() =>
+      useSignatureRenderer({
+        signerName: 'Jane Doe',
+        style: { mode: 'typed', fontFamily: 'Caveat' },
+      })
+    )
+
+    await waitFor(() => {
+      expect(result.current.signatureDataUrl).toBe('data:image/png;base64,mocked-typed-signature')
       expect(result.current.isRendering).toBe(false)
     })
   })

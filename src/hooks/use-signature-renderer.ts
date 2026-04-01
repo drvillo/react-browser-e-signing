@@ -131,7 +131,9 @@ export function useSignatureRenderer({ signerName, style }: UseSignatureRenderer
       })
       .catch(() => {
         if (!isActive) return
-        setSignatureDataUrl(null)
+        // Defensive: `loadSignatureFont` should not throw; still render with browser fallback glyphs
+        const dataUrl = drawTypedSignature({ signerName: normalizedName, fontFamily: style.fontFamily })
+        setSignatureDataUrl(dataUrl || null)
       })
       .finally(() => {
         if (!isActive) return

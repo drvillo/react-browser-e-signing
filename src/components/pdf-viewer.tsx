@@ -1,10 +1,8 @@
 import { Document, Page, pdfjs } from 'react-pdf'
+import { useEffect } from 'react'
 import type { ReactNode } from 'react'
+import { getConfig } from '../lib/config'
 import { cn } from '../lib/cn'
-
-if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
-}
 
 interface PdfViewerProps {
   pdfData: ArrayBuffer | null
@@ -15,6 +13,8 @@ interface PdfViewerProps {
   onPageDimensions: (input: { pageIndex: number; widthPt: number; heightPt: number }) => void
   renderOverlay?: (pageIndex: number) => ReactNode
   className?: string
+  /** PDF.js worker script URL. Overrides `configure({ pdfWorkerSrc })`. When neither is set, worker URL is left unset (no CDN injection). */
+  workerSrc?: string
 }
 
 const MIN_SCALE = 0.5
@@ -30,7 +30,15 @@ export function PdfViewer({
   onPageDimensions,
   renderOverlay,
   className,
+  workerSrc,
 }: PdfViewerProps) {
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const fromConfig = getConfig().pdfWorkerSrc
+    const next = workerSrc ?? fromConfig
+    if (next) pdfjs.GlobalWorkerOptions.workerSrc = next
+  }, [workerSrc])
+
   if (!pdfData)
     return (
       <div data-slot="pdf-viewer-empty" className={cn(className)}>

@@ -59,6 +59,11 @@ pnpm demo
 - `SIGNATURE_FONTS`
 - `sha256`
 
+### Configuration
+
+- `configure(options)` — PDF worker URL, signature font mode (`network` | `local-only`), optional `fontUrlResolver`, optional `onWarning` callback
+- Types: `ESigningConfig`, `SignatureFontWarning`
+
 ### Types
 
 - `FieldPlacement`
@@ -123,9 +128,86 @@ pnpm typecheck
 
 ## Notes
 
-- `PdfViewer` sets `react-pdf` worker from CDN by default using the runtime PDF.js version.
+- **PDF worker:** the package does **not** inject a third-party worker URL. Set `configure({ pdfWorkerSrc })` and/or `<PdfViewer workerSrc="..." />` so PDF.js can load a worker (recommended for production). See **Production hardening** below.
 - Browser test config skips execution when Playwright Chromium is not available in the environment.
 - Demo theme switcher (`default` / `custom`) shows how a container app can fully re-theme the same components.
+
+## Production hardening
+
+Runtime calls to external CDNs (PDF.js worker, Google Fonts) often fail in real apps: **CSP** (`worker-src`, `connect-src`, `font-src`), ad blockers, corporate proxies, or offline users. They also add noisy console errors (`Failed to fetch`) even when the rest of the UI works. This library defaults to **no injected worker URL** and lets you control loading explicitly.
+
+### Self-hosted PDF.js worker (recommended)
+
+Copy the worker file that matches your installed `pdfjs-dist` (same major/minor as `react-pdf` / PDF.js):
+
+```bash
+cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/pdf.worker.min.mjs
+```
+
+Then configure once (e.g. in your app entry or root layout client component):
+
+```tsx
+import { configure } from '@drvillo/react-browser-e-signing'
+
+configure({ pdfWorkerSrc: '/pdf.worker.min.mjs' })
+```
+
+Or per viewer:
+
+```tsx
+<PdfViewer workerSrc="/pdf.worker.min.mjs" {...pdfViewerProps} />
+```
+
+`workerSrc` on `PdfViewer` overrides `configure({ pdfWorkerSrc })`.
+
+### Typed signatures: local-only fonts (no network)
+
+Skip all font fetches (handwriting fonts won’t load from Google; the browser uses whatever faces are already available, with sensible fallback):
+
+```tsx
+configure({ fontMode: 'local-only' })
+```
+
+Default is `fontMode: 'network'`, which keeps the previous Google Fonts behavior but **does not throw** on failure; failures are reported via `onWarning` when set.
+
+### Custom font URLs (self-hosted woff/woff2)
+
+```tsx
+configure({
+  fontUrlResolver: (family) => `/fonts/${family.replace(/\s+/g, '-')}.woff2`,
+})
+```
+
+Return `null` to fall back to Google Fonts for that family (when `fontMode` is `'network'`).
+
+### Observability
+
+```tsx
+configure({
+  onWarning: (w) => {
+    console.warn(`[react-browser-e-signing] ${w.code}: ${w.message}`)
+  },
+})
+```
+
+Warnings are non-throwing; signing flow should remain usable.
+
+### CSP-oriented example
+
+If everything is same-origin:
+
+```
+Content-Security-Policy: worker-src 'self'; script-src 'self'; connect-src 'self'; font-src 'self';
+```
+
+Adjust `connect-src` / `font-src` if you still use Google Fonts or a CDN for the worker.
+
+### Migration from v0.1.2 and earlier
+
+Previously, `PdfViewer` set the worker to unpkg at module load, and typed fonts fetched Google Fonts CSS + files at runtime.
+
+- **Worker:** to restore the old CDN behavior (not recommended for production), set `pdfWorkerSrc` to the unpkg URL for your PDF.js version, e.g. `https://unpkg.com/pdfjs-dist@<version>/build/pdf.worker.min.mjs` (match `pdfjs.version` from `react-pdf` / `pdfjs-dist`).
+- **Fonts:** behavior is unchanged when you omit `configure()` except that network failures no longer surface as thrown errors from `loadSignatureFont`; use `fontMode: 'local-only'` for strict no-network deployments.
 
 ## Limitations
 
