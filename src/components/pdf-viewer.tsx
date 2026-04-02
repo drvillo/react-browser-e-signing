@@ -12,9 +12,15 @@ interface PdfViewerProps {
   onDocumentLoadSuccess: (numPages: number) => void
   onPageDimensions: (input: { pageIndex: number; widthPt: number; heightPt: number }) => void
   renderOverlay?: (pageIndex: number) => ReactNode
+  /** Render extra controls in the toolbar between page count and zoom controls. */
+  renderToolbarContent?: () => ReactNode
   className?: string
   /** PDF.js worker script URL. Overrides `configure({ pdfWorkerSrc })`. When neither is set, worker URL is left unset (no CDN injection). */
   workerSrc?: string
+  /** 'scroll' renders all pages. 'single' renders only currentPageIndex. */
+  pageMode?: 'scroll' | 'single'
+  /** Visible page index in single mode (0-based). */
+  currentPageIndex?: number
 }
 
 const MIN_SCALE = 0.5
@@ -29,8 +35,11 @@ export function PdfViewer({
   onDocumentLoadSuccess,
   onPageDimensions,
   renderOverlay,
+  renderToolbarContent,
   className,
   workerSrc,
+  pageMode = 'scroll',
+  currentPageIndex = 0,
 }: PdfViewerProps) {
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -46,10 +55,18 @@ export function PdfViewer({
       </div>
     )
 
+  const maxPageIndex = Math.max(0, numPages - 1)
+  const resolvedCurrentPageIndex = Math.min(maxPageIndex, Math.max(0, currentPageIndex))
+  const pageIndices =
+    pageMode === 'single' ? [resolvedCurrentPageIndex] : Array.from({ length: numPages }, (_, pageIndex) => pageIndex)
+
   return (
     <div data-slot="pdf-viewer" className={cn(className)}>
       <div data-slot="pdf-viewer-toolbar">
         <div data-slot="pdf-viewer-page-count">Pages: {numPages || '—'}</div>
+        {renderToolbarContent ? (
+          <div data-slot="pdf-viewer-toolbar-content">{renderToolbarContent()}</div>
+        ) : null}
         <div data-slot="pdf-viewer-zoom">
           <button
             type="button"
@@ -76,7 +93,7 @@ export function PdfViewer({
         error={<div data-slot="pdf-viewer-error">Unable to render this PDF.</div>}
       >
         <div data-slot="pdf-viewer-pages">
-          {Array.from({ length: numPages }, (_, pageIndex) => (
+          {pageIndices.map((pageIndex) => (
             <div
               key={`pdf-page-${pageIndex}`}
               data-slot="pdf-viewer-page"

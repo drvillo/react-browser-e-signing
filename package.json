@@ -1,6 +1,6 @@
 {
   "name": "@drvillo/react-browser-e-signing",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "React PDF e-signing in the browser — fields, handwriting, pdf-lib",
   "repository": {
     "type": "git",
@@ -27,7 +27,8 @@
     "./pdf.worker.min.mjs": "./dist/pdf.worker.min.mjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "INTEGRATION_GUIDELINES.md"
   ],
   "scripts": {
     "postinstall": "pnpm run install:browsers",

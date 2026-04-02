@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0
+
+### Added
+
+- **`usePdfPageVisibility`:** IntersectionObserver-based hook for current/visible page indices and `scrollToPage(pageIndex)`.
+- **`PdfPageNavigator`:** Prev/next + page label controls (slot-styled).
+- **`PdfViewer`:** `pageMode: 'scroll' | 'single'` and `currentPageIndex` for single-page rendering; `renderToolbarContent` for composable toolbar injection.
+- **Slots/styles:** `pdf-viewer-toolbar-content`, `pdf-page-navigator*` in `SLOTS` and default `styles.css`.
+- **`INTEGRATION_GUIDELINES.md`:** Agent-oriented integration reference (included in published package).
+
+### Changed
+
+- Demo: sticky sidebar, toolbar placement controls, responsive scroll/single mode, and UX Controls Lab toggles.
+
 ## 0.2.0
 
 ### Added

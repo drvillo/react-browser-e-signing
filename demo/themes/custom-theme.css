@@ -89,6 +89,7 @@
 
 [data-slot='pdf-viewer-page-count'],
 [data-slot='pdf-viewer-zoom-value'],
+[data-slot='pdf-page-navigator-label'],
 [data-slot='signer-panel-label'],
 [data-slot='signature-preview-font-label'],
 [data-slot='signature-preview-placeholder'],
@@ -97,6 +98,7 @@
 }
 
 [data-slot='pdf-viewer-zoom-button'],
+[data-slot='pdf-page-navigator-button'],
 [data-slot='field-palette-button'],
 [data-slot='signature-preview-mode-button'],
 [data-slot='signature-pad-clear'],
@@ -107,6 +109,7 @@
 }
 
 [data-slot='pdf-viewer-zoom-button']:hover,
+[data-slot='pdf-page-navigator-button']:hover:not(:disabled),
 [data-slot='field-palette-button']:hover,
 [data-slot='signature-pad-clear']:hover,
 [data-slot='signing-complete-reset']:hover {
