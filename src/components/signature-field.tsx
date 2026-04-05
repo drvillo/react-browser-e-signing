@@ -128,12 +128,14 @@ export function SignatureField({ field, onUpdateField, onRemoveField, preview, c
   }
 
   const previewText = getFieldPreviewText(field, preview)
+  const isLocked = field.locked === true
 
   return (
     <div
       ref={rootRef}
       data-slot="signature-field"
       data-field-type={field.type}
+      data-locked={isLocked ? true : undefined}
       className={cn(className)}
       style={{
         position: 'absolute',
@@ -142,10 +144,17 @@ export function SignatureField({ field, onUpdateField, onRemoveField, preview, c
         width: `${field.widthPercent}%`,
         height: `${field.heightPercent}%`,
         userSelect: 'none',
+        cursor: isLocked ? 'default' : undefined,
+        ...(isLocked && {
+          borderStyle: 'dashed',
+          borderWidth: 1,
+          borderColor: 'rgba(100, 116, 139, 0.55)',
+          boxSizing: 'border-box',
+        }),
       }}
-      onPointerDown={handleDragPointerDown}
-      onPointerMove={handleDragPointerMove}
-      onPointerUp={handleDragPointerUp}
+      onPointerDown={isLocked ? undefined : handleDragPointerDown}
+      onPointerMove={isLocked ? undefined : handleDragPointerMove}
+      onPointerUp={isLocked ? undefined : handleDragPointerUp}
     >
       <div
         data-slot="signature-field-content"
@@ -170,34 +179,66 @@ export function SignatureField({ field, onUpdateField, onRemoveField, preview, c
             <div data-slot="signature-field-preview-text">{previewText || '—'}</div>
           )}
         </div>
-        <button
-          type="button"
-          data-slot="signature-field-remove"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => {
-            event.stopPropagation()
-            onRemoveField(field.id)
-          }}
-          aria-label="Remove field"
-        >
-          ×
-        </button>
+        {isLocked ? (
+          <div
+            data-slot="signature-field-lock"
+            aria-label="Locked field"
+            style={{
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'center',
+              padding: '2px',
+              color: 'rgba(71, 85, 105, 0.9)',
+            }}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+        ) : (
+          <button
+            type="button"
+            data-slot="signature-field-remove"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation()
+              onRemoveField(field.id)
+            }}
+            aria-label="Remove field"
+          >
+            ×
+          </button>
+        )}
       </div>
 
-      <div
-        data-slot="signature-field-resize"
-        style={{
-          position: 'absolute',
-          right: '-0.375rem',
-          bottom: '-0.375rem',
-          width: '0.75rem',
-          height: '0.75rem',
-          cursor: 'nwse-resize',
-        }}
-        onPointerDown={handleResizePointerDown}
-        onPointerMove={handleResizePointerMove}
-        onPointerUp={handleResizePointerUp}
-      />
+      {!isLocked ? (
+        <div
+          data-slot="signature-field-resize"
+          style={{
+            position: 'absolute',
+            right: '-0.375rem',
+            bottom: '-0.375rem',
+            width: '0.75rem',
+            height: '0.75rem',
+            cursor: 'nwse-resize',
+          }}
+          onPointerDown={handleResizePointerDown}
+          onPointerMove={handleResizePointerMove}
+          onPointerUp={handleResizePointerUp}
+        />
+      ) : null}
     </div>
   )
 }

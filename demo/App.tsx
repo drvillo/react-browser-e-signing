@@ -14,13 +14,21 @@ import {
   modifyPdf,
   sha256,
   useFieldPlacement,
-  usePdfPageVisibility,
   usePdfDocument,
+  usePdfPageVisibility,
   useSignatureRenderer,
 } from '../src/index'
 
 configure({ pdfWorkerSrc: getPdfWorkerSrc() })
-import type { FieldType, SignatureFieldPreview, SignatureStyle, SignerInfo, SigningResult } from '../src/types'
+import type {
+  FieldPlacement,
+  FieldType,
+  PdfPageDimensions,
+  SignatureFieldPreview,
+  SignatureStyle,
+  SignerInfo,
+  SigningResult,
+} from '../src/types'
 
 interface SignedDocumentState {
   result: SigningResult
@@ -35,6 +43,39 @@ const THEME_FILE_MAP: Record<DemoTheme, string> = {
   default: '/themes/default-theme.css',
   custom: '/themes/custom-theme.css',
 }
+
+const TEMPLATE_FIELDS: FieldPlacement[] = [
+  {
+    id: 'template-signature',
+    type: 'signature',
+    pageIndex: 0,
+    xPercent: 10,
+    yPercent: 70,
+    widthPercent: 35,
+    heightPercent: 8,
+    locked: true,
+  },
+  {
+    id: 'template-name',
+    type: 'fullName',
+    pageIndex: 0,
+    xPercent: 10,
+    yPercent: 82,
+    widthPercent: 30,
+    heightPercent: 5,
+    locked: true,
+  },
+  {
+    id: 'template-date',
+    type: 'date',
+    pageIndex: 0,
+    xPercent: 60,
+    yPercent: 82,
+    widthPercent: 20,
+    heightPercent: 5,
+    locked: true,
+  },
+]
 
 function signerDisplayName(signerInfo: SignerInfo): string {
   return [signerInfo.firstName, signerInfo.lastName].filter(Boolean).join(' ').trim()
@@ -52,9 +93,47 @@ function todayDateText(): string {
   return new Date().toLocaleDateString()
 }
 
-export function App() {
-  const [theme, setTheme] = useState<DemoTheme>('default')
-  const [pdfInput, setPdfInput] = useState<File | null>(null)
+interface SigningAreaProps {
+  initialFields?: FieldPlacement[]
+  onPdfClear: () => void
+  pdfInput: File | null
+  pdfData: ArrayBuffer | null
+  numPages: number
+  scale: number
+  setScale: (scale: number) => void
+  handleDocumentLoadSuccess: (numPages: number) => void
+  setPageDimension: (pageIndex: number, widthPt: number, heightPt: number) => void
+  pageDimensions: PdfPageDimensions[]
+  pageModeControl: PageModeControl
+  visibilityThreshold: number
+  showToolbarControls: boolean
+  showToolbarPageNavigator: boolean
+  showToolbarFieldPalette: boolean
+  showStandaloneFieldPalette: boolean
+  showStickySidebar: boolean
+  showVisibilityReadout: boolean
+}
+
+function SigningArea({
+  initialFields,
+  onPdfClear,
+  pdfInput,
+  pdfData,
+  numPages,
+  scale,
+  setScale,
+  handleDocumentLoadSuccess,
+  setPageDimension,
+  pageDimensions,
+  pageModeControl,
+  visibilityThreshold,
+  showToolbarControls,
+  showToolbarPageNavigator,
+  showToolbarFieldPalette,
+  showStandaloneFieldPalette,
+  showStickySidebar,
+  showVisibilityReadout,
+}: SigningAreaProps) {
   const [selectedFieldType, setSelectedFieldType] = useState<FieldType | null>(null)
   const [signerInfo, setSignerInfo] = useState<SignerInfo>(createDefaultSigner())
   const [signatureStyle, setSignatureStyle] = useState<SignatureStyle>({
@@ -66,30 +145,12 @@ export function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [singlePageIndex, setSinglePageIndex] = useState(0)
-  const [pageModeControl, setPageModeControl] = useState<PageModeControl>('auto')
-  const [showToolbarControls, setShowToolbarControls] = useState(true)
-  const [showToolbarPageNavigator, setShowToolbarPageNavigator] = useState(true)
-  const [showToolbarFieldPalette, setShowToolbarFieldPalette] = useState(true)
-  const [showStandaloneFieldPalette, setShowStandaloneFieldPalette] = useState(false)
-  const [showStickySidebar, setShowStickySidebar] = useState(true)
-  const [showVisibilityReadout, setShowVisibilityReadout] = useState(true)
-  const [visibilityThreshold, setVisibilityThreshold] = useState(0.5)
   const viewerContainerRef = useRef<HTMLDivElement | null>(null)
-
-  const {
-    pdfData,
-    numPages,
-    scale,
-    setScale,
-    pageDimensions,
-    setPageDimension,
-    handleDocumentLoadSuccess,
-    errorMessage: documentErrorMessage,
-  } = usePdfDocument(pdfInput)
 
   const { fields, addField, updateField, removeField, clearFields } = useFieldPlacement({
     defaultWidthPercent: defaults.DEFAULT_FIELD_WIDTH_PERCENT,
     defaultHeightPercent: defaults.DEFAULT_FIELD_HEIGHT_PERCENT,
+    initialFields,
   })
 
   const displayName = useMemo(() => signerDisplayName(signerInfo), [signerInfo])
@@ -150,20 +211,30 @@ export function App() {
     setSinglePageIndex(currentPageIndex)
   }, [currentPageIndex, isSinglePageMode])
 
-  useEffect(() => {
-    const linkId = 'esig-theme-link'
-    let linkElement = document.getElementById(linkId) as HTMLLinkElement | null
+  const pdfKey = pdfInput ? `${pdfInput.name}-${pdfInput.size}-${pdfInput.lastModified}` : null
+  const previousPdfKeyRef = useRef<string | null | undefined>(undefined)
 
-    if (!linkElement) {
-      linkElement = document.createElement('link')
-      linkElement.id = linkId
-      linkElement.rel = 'stylesheet'
-      document.head.appendChild(linkElement)
+  useEffect(() => {
+    if (previousPdfKeyRef.current === undefined) {
+      previousPdfKeyRef.current = pdfKey
+      return
     }
 
-    linkElement.href = THEME_FILE_MAP[theme]
-    document.body.dataset.theme = theme
-  }, [theme])
+    if (previousPdfKeyRef.current === pdfKey) return
+
+    const previousKey = previousPdfKeyRef.current
+    previousPdfKeyRef.current = pdfKey
+
+    // First upload (null → file): keep initialFields / template fields.
+    if (previousKey === null && pdfKey !== null) return
+
+    clearFields()
+    setSignedDocument((previous) => {
+      if (previous) URL.revokeObjectURL(previous.downloadUrl)
+      return null
+    })
+    setErrorMessage(null)
+  }, [pdfKey, clearFields])
 
   async function handleSignDocument(): Promise<void> {
     if (!pdfInput) {
@@ -220,7 +291,7 @@ export function App() {
   function handleReset(): void {
     if (signedDocument) URL.revokeObjectURL(signedDocument.downloadUrl)
     setSignedDocument(null)
-    setPdfInput(null)
+    onPdfClear()
     clearFields()
     setErrorMessage(null)
   }
@@ -237,6 +308,146 @@ export function App() {
     }
     scrollToPage(pageIndex)
   }
+
+  return (
+    <>
+      {showVisibilityReadout ? (
+        <div className="mb-4 grid gap-1 rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 sm:grid-cols-2">
+          <div>activePage: {numPages ? activePageIndex + 1 : 0}</div>
+          <div>visiblePages: {visiblePageIndices.map((pageIndex) => pageIndex + 1).join(', ') || 'none'}</div>
+          <div>mode: {isSinglePageMode ? 'single' : 'scroll'}</div>
+          <div>isMobile: {isMobile ? 'true' : 'false'}</div>
+        </div>
+      ) : null}
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
+        <section className="space-y-4">
+          {showStandaloneFieldPalette ? (
+            <FieldPalette selectedFieldType={selectedFieldType} onSelectFieldType={setSelectedFieldType} />
+          ) : null}
+          {signedDocument ? (
+            <SigningComplete
+              signerName={displayName}
+              fieldCount={fields.length}
+              signedAt={new Date(signedDocument.signedAt).toLocaleString()}
+              documentHash={signedDocument.result.sha256}
+              downloadUrl={signedDocument.downloadUrl}
+              fileName={`signed-${Date.now()}.pdf`}
+              onReset={handleReset}
+            />
+          ) : null}
+          <div ref={viewerContainerRef}>
+            <PdfViewer
+              pdfData={pdfData}
+              numPages={numPages}
+              scale={scale}
+              onScaleChange={setScale}
+              onDocumentLoadSuccess={handleDocumentLoadSuccess}
+              onPageDimensions={({ pageIndex, widthPt, heightPt }) => setPageDimension(pageIndex, widthPt, heightPt)}
+              pageMode={isSinglePageMode ? 'single' : 'scroll'}
+              currentPageIndex={activePageIndex}
+              renderToolbarContent={
+                showToolbarControls && (showToolbarPageNavigator || showToolbarFieldPalette)
+                  ? () => (
+                      <>
+                        {showToolbarPageNavigator ? (
+                          <PdfPageNavigator
+                            currentPageIndex={activePageIndex}
+                            numPages={numPages}
+                            onPageChange={handlePageChange}
+                          />
+                        ) : null}
+                        {showToolbarFieldPalette ? (
+                          <FieldPalette selectedFieldType={selectedFieldType} onSelectFieldType={setSelectedFieldType} />
+                        ) : null}
+                      </>
+                    )
+                  : undefined
+              }
+              renderOverlay={(pageIndex) => (
+                <FieldOverlay
+                  pageIndex={pageIndex}
+                  fields={fields}
+                  selectedFieldType={selectedFieldType}
+                  onAddField={handleAddField}
+                  onUpdateField={updateField}
+                  onRemoveField={removeField}
+                  preview={fieldPreview}
+                />
+              )}
+            />
+          </div>
+        </section>
+
+        <aside className={`space-y-4 ${showStickySidebar ? 'lg:sticky lg:top-6 lg:self-start' : ''}`}>
+          <SignerDetailsPanel signerInfo={signerInfo} onSignerInfoChange={setSignerInfo} />
+          <SignaturePreview
+            signerName={displayName}
+            style={signatureStyle}
+            signatureDataUrl={signatureDataUrl}
+            isRendering={isRendering}
+            onStyleChange={setSignatureStyle}
+          />
+
+          <div data-demo-slot="sign-card" className="rounded-lg border border-slate-300 bg-white p-4">
+            <button
+              type="button"
+              data-demo-slot="sign-button"
+              className="w-full rounded bg-blue-700 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+              onClick={() => void handleSignDocument()}
+              disabled={isSigning || !pdfInput || !fields.length}
+            >
+              {isSigning ? 'Signing...' : 'Sign Document'}
+            </button>
+          </div>
+        </aside>
+      </div>
+
+      {errorMessage ? (
+        <div className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</div>
+      ) : null}
+    </>
+  )
+}
+
+export function App() {
+  const [theme, setTheme] = useState<DemoTheme>('default')
+  const [pdfInput, setPdfInput] = useState<File | null>(null)
+  const [templateMode, setTemplateMode] = useState(false)
+  const [pageModeControl, setPageModeControl] = useState<PageModeControl>('auto')
+  const [showToolbarControls, setShowToolbarControls] = useState(true)
+  const [showToolbarPageNavigator, setShowToolbarPageNavigator] = useState(true)
+  const [showToolbarFieldPalette, setShowToolbarFieldPalette] = useState(true)
+  const [showStandaloneFieldPalette, setShowStandaloneFieldPalette] = useState(false)
+  const [showStickySidebar, setShowStickySidebar] = useState(true)
+  const [showVisibilityReadout, setShowVisibilityReadout] = useState(true)
+  const [visibilityThreshold, setVisibilityThreshold] = useState(0.5)
+
+  const {
+    pdfData,
+    numPages,
+    scale,
+    setScale,
+    pageDimensions,
+    setPageDimension,
+    handleDocumentLoadSuccess,
+    errorMessage: documentErrorMessage,
+  } = usePdfDocument(pdfInput)
+
+  useEffect(() => {
+    const linkId = 'esig-theme-link'
+    let linkElement = document.getElementById(linkId) as HTMLLinkElement | null
+
+    if (!linkElement) {
+      linkElement = document.createElement('link')
+      linkElement.id = linkId
+      linkElement.rel = 'stylesheet'
+      document.head.appendChild(linkElement)
+    }
+
+    linkElement.href = THEME_FILE_MAP[theme]
+    document.body.dataset.theme = theme
+  }, [theme])
 
   return (
     <div data-demo-slot="shell" className="mx-auto w-full max-w-[1400px] space-y-4 p-4 md:p-6">
@@ -271,9 +482,6 @@ export function App() {
             onChange={(event) => {
               const nextFile = event.target.files?.[0] ?? null
               setPdfInput(nextFile)
-              setSignedDocument(null)
-              clearFields()
-              setErrorMessage(null)
             }}
           />
         </label>
@@ -371,7 +579,24 @@ export function App() {
             />
             <span className="grid gap-1">
               <span className="text-xs font-medium text-slate-700">Show visibility diagnostics</span>
-              <span className="text-xs text-slate-500">Displays active page and visible pages from usePdfPageVisibility.</span>
+              <span className="text-xs text-slate-500">
+                Displays active page and visible pages from usePdfPageVisibility.
+              </span>
+            </span>
+          </label>
+
+          <label className="flex items-start gap-2 rounded border border-slate-200 p-3">
+            <input
+              type="checkbox"
+              checked={templateMode}
+              onChange={(event) => setTemplateMode(event.target.checked)}
+            />
+            <span className="grid gap-1">
+              <span className="text-xs font-medium text-slate-700">Template mode (locked fields)</span>
+              <span className="text-xs text-slate-500">
+                Pre-positions locked signature, name, and date on page 1 (lower area; scroll if needed). Upload before
+                or after enabling—fields persist. Toggles remount.
+              </span>
             </span>
           </label>
 
@@ -388,106 +613,32 @@ export function App() {
             </select>
           </label>
         </div>
-
-        {showVisibilityReadout ? (
-          <div className="mt-3 grid gap-1 rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 sm:grid-cols-2">
-            <div>activePage: {numPages ? activePageIndex + 1 : 0}</div>
-            <div>visiblePages: {visiblePageIndices.map((pageIndex) => pageIndex + 1).join(', ') || 'none'}</div>
-            <div>mode: {isSinglePageMode ? 'single' : 'scroll'}</div>
-            <div>isMobile: {isMobile ? 'true' : 'false'}</div>
-          </div>
-        ) : null}
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
-        <section className="space-y-4">
-          {showStandaloneFieldPalette ? (
-            <FieldPalette selectedFieldType={selectedFieldType} onSelectFieldType={setSelectedFieldType} />
-          ) : null}
-          {signedDocument ? (
-            <SigningComplete
-              signerName={displayName}
-              fieldCount={fields.length}
-              signedAt={new Date(signedDocument.signedAt).toLocaleString()}
-              documentHash={signedDocument.result.sha256}
-              downloadUrl={signedDocument.downloadUrl}
-              fileName={`signed-${Date.now()}.pdf`}
-              onReset={handleReset}
-            />
-          ) : null}
-          <div ref={viewerContainerRef}>
-            <PdfViewer
-              pdfData={pdfData}
-              numPages={numPages}
-              scale={scale}
-              onScaleChange={setScale}
-              onDocumentLoadSuccess={handleDocumentLoadSuccess}
-              onPageDimensions={({ pageIndex, widthPt, heightPt }) => setPageDimension(pageIndex, widthPt, heightPt)}
-              pageMode={isSinglePageMode ? 'single' : 'scroll'}
-              currentPageIndex={activePageIndex}
-              renderToolbarContent={
-                showToolbarControls && (showToolbarPageNavigator || showToolbarFieldPalette)
-                  ? () => (
-                      <>
-                        {showToolbarPageNavigator ? (
-                          <PdfPageNavigator
-                            currentPageIndex={activePageIndex}
-                            numPages={numPages}
-                            onPageChange={handlePageChange}
-                          />
-                        ) : null}
-                        {showToolbarFieldPalette ? (
-                          <FieldPalette selectedFieldType={selectedFieldType} onSelectFieldType={setSelectedFieldType} />
-                        ) : null}
-                      </>
-                    )
-                  : undefined
-              }
-              renderOverlay={(pageIndex) => (
-                <FieldOverlay
-                  pageIndex={pageIndex}
-                  fields={fields}
-                  selectedFieldType={selectedFieldType}
-                  onAddField={handleAddField}
-                  onUpdateField={updateField}
-                  onRemoveField={removeField}
-                  preview={fieldPreview}
-                />
-              )}
-            />
-          </div>
-        </section>
-
-        <aside className={`space-y-4 ${showStickySidebar ? 'lg:sticky lg:top-6 lg:self-start' : ''}`}>
-          <SignerDetailsPanel signerInfo={signerInfo} onSignerInfoChange={setSignerInfo} />
-          <SignaturePreview
-            signerName={displayName}
-            style={signatureStyle}
-            signatureDataUrl={signatureDataUrl}
-            isRendering={isRendering}
-            onStyleChange={setSignatureStyle}
-          />
-
-          <div data-demo-slot="sign-card" className="rounded-lg border border-slate-300 bg-white p-4">
-            <button
-              type="button"
-              data-demo-slot="sign-button"
-              className="w-full rounded bg-blue-700 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-              onClick={() => void handleSignDocument()}
-              disabled={isSigning || !pdfInput || !fields.length}
-            >
-              {isSigning ? 'Signing...' : 'Sign Document'}
-            </button>
-          </div>
-        </aside>
-      </div>
+      <SigningArea
+        key={String(templateMode)}
+        initialFields={templateMode ? TEMPLATE_FIELDS : undefined}
+        onPdfClear={() => setPdfInput(null)}
+        pdfInput={pdfInput}
+        pdfData={pdfData}
+        numPages={numPages}
+        scale={scale}
+        setScale={setScale}
+        handleDocumentLoadSuccess={handleDocumentLoadSuccess}
+        setPageDimension={setPageDimension}
+        pageDimensions={pageDimensions}
+        pageModeControl={pageModeControl}
+        visibilityThreshold={visibilityThreshold}
+        showToolbarControls={showToolbarControls}
+        showToolbarPageNavigator={showToolbarPageNavigator}
+        showToolbarFieldPalette={showToolbarFieldPalette}
+        showStandaloneFieldPalette={showStandaloneFieldPalette}
+        showStickySidebar={showStickySidebar}
+        showVisibilityReadout={showVisibilityReadout}
+      />
 
       {documentErrorMessage ? (
         <div className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{documentErrorMessage}</div>
-      ) : null}
-
-      {errorMessage ? (
-        <div className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</div>
       ) : null}
     </div>
   )

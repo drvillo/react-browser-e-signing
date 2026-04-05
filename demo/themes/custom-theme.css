@@ -145,6 +145,16 @@
   background: rgba(137, 180, 250, 0.22);
 }
 
+[data-slot='signature-field'][data-locked] {
+  border-style: dashed;
+  border-color: var(--esig-muted);
+  background: rgba(30, 30, 46, 0.65);
+}
+
+[data-slot='signature-field-lock'] {
+  color: var(--esig-muted);
+}
+
 [data-slot='signature-field-label'],
 [data-slot='signature-field-preview-text'] {
   color: var(--esig-text);

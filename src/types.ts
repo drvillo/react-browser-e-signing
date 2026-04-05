@@ -8,6 +8,7 @@ export interface FieldPlacement {
   yPercent: number
   widthPercent: number
   heightPercent: number
+  locked?: boolean
 }
 
 export interface SignerInfo {

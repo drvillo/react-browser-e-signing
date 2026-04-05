@@ -4,6 +4,7 @@ import type { FieldPlacement, FieldType } from '../types'
 interface UseFieldPlacementOptions {
   defaultWidthPercent?: number
   defaultHeightPercent?: number
+  initialFields?: FieldPlacement[]
 }
 
 interface AddFieldInput {
@@ -31,7 +32,7 @@ function buildFieldId(): string {
 export function useFieldPlacement(options: UseFieldPlacementOptions = {}) {
   const defaultWidthPercent = options.defaultWidthPercent ?? 25
   const defaultHeightPercent = options.defaultHeightPercent ?? 5
-  const [fields, setFields] = useState<FieldPlacement[]>([])
+  const [fields, setFields] = useState<FieldPlacement[]>(options.initialFields ?? [])
 
   const addField = useCallback(
     ({ pageIndex, type, xPercent, yPercent }: AddFieldInput) => {

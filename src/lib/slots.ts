@@ -23,6 +23,7 @@ export const SLOTS = {
   signatureFieldPreviewText: 'signature-field-preview-text',
   signatureFieldRemove: 'signature-field-remove',
   signatureFieldResize: 'signature-field-resize',
+  signatureFieldLock: 'signature-field-lock',
   fieldPalette: 'field-palette',
   fieldPaletteButton: 'field-palette-button',
   signerPanel: 'signer-panel',

@@ -9,6 +9,7 @@ export function buildField(overrides: Partial<FieldPlacement> = {}): FieldPlacem
     yPercent: overrides.yPercent ?? 10,
     widthPercent: overrides.widthPercent ?? 25,
     heightPercent: overrides.heightPercent ?? 6,
+    ...(overrides.locked !== undefined && { locked: overrides.locked }),
   }
 }
 
