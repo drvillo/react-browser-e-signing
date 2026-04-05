@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { getPdfWorkerSrc } from '../worker/index.mjs'
 import {
   configure,
+  CustomFieldInputs,
   FieldOverlay,
   FieldPalette,
   PdfPageNavigator,
@@ -13,6 +14,7 @@ import {
   defaults,
   modifyPdf,
   sha256,
+  useAnchorTags,
   useFieldPlacement,
   usePdfDocument,
   usePdfPageVisibility,
@@ -95,6 +97,8 @@ function todayDateText(): string {
 
 interface SigningAreaProps {
   initialFields?: FieldPlacement[]
+  anchorFields?: FieldPlacement[]
+  isScanning?: boolean
   onPdfClear: () => void
   pdfInput: File | null
   pdfData: ArrayBuffer | null
@@ -116,6 +120,8 @@ interface SigningAreaProps {
 
 function SigningArea({
   initialFields,
+  anchorFields,
+  isScanning,
   onPdfClear,
   pdfInput,
   pdfData,
@@ -136,6 +142,7 @@ function SigningArea({
 }: SigningAreaProps) {
   const [selectedFieldType, setSelectedFieldType] = useState<FieldType | null>(null)
   const [signerInfo, setSignerInfo] = useState<SignerInfo>(createDefaultSigner())
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({})
   const [signatureStyle, setSignatureStyle] = useState<SignatureStyle>({
     mode: 'typed',
     fontFamily: defaults.SIGNATURE_FONTS[0],
@@ -147,11 +154,27 @@ function SigningArea({
   const [singlePageIndex, setSinglePageIndex] = useState(0)
   const viewerContainerRef = useRef<HTMLDivElement | null>(null)
 
+  const mergedInitialFields = useMemo(() => {
+    const base = initialFields ?? []
+    const anchor = anchorFields ?? []
+    return [...base, ...anchor]
+  }, [initialFields, anchorFields])
+
   const { fields, addField, updateField, removeField, clearFields } = useFieldPlacement({
     defaultWidthPercent: defaults.DEFAULT_FIELD_WIDTH_PERCENT,
     defaultHeightPercent: defaults.DEFAULT_FIELD_HEIGHT_PERCENT,
-    initialFields,
+    initialFields: mergedInitialFields,
   })
+
+  const customFieldLabels = useMemo(
+    () => fields.filter((f) => f.type === 'custom' && f.label).map((f) => f.label!),
+    [fields]
+  )
+
+  const signerWithCustomFields = useMemo<SignerInfo>(
+    () => ({ ...signerInfo, customFields: customFieldValues }),
+    [signerInfo, customFieldValues]
+  )
 
   const displayName = useMemo(() => signerDisplayName(signerInfo), [signerInfo])
   const { signatureDataUrl, isRendering } = useSignatureRenderer({
@@ -173,8 +196,9 @@ function SigningArea({
       fullName: displayName,
       title: signerInfo.title,
       dateText,
+      customFields: customFieldValues,
     }),
-    [dateText, displayName, signatureDataUrl, signerInfo.title]
+    [dateText, displayName, signatureDataUrl, signerInfo.title, customFieldValues]
   )
 
   useEffect(() => {
@@ -265,7 +289,7 @@ function SigningArea({
       const signedPdfBytes = await modifyPdf({
         pdfBytes: inputBytes,
         fields,
-        signer: signerInfo,
+        signer: signerWithCustomFields,
         signatureDataUrl,
         pageDimensions,
         dateText,
@@ -307,6 +331,19 @@ function SigningArea({
       return
     }
     scrollToPage(pageIndex)
+  }
+
+  function handleNextCustomField(): void {
+    const unfilledFields = fields.filter(
+      (f) => f.type === 'custom' && f.label && !customFieldValues[f.label]
+    )
+    if (unfilledFields.length === 0) return
+    const target = unfilledFields[0]
+    if (isSinglePageMode) {
+      setSinglePageIndex(target.pageIndex)
+    } else {
+      scrollToPage(target.pageIndex)
+    }
   }
 
   return (
@@ -381,6 +418,30 @@ function SigningArea({
 
         <aside className={`space-y-4 ${showStickySidebar ? 'lg:sticky lg:top-6 lg:self-start' : ''}`}>
           <SignerDetailsPanel signerInfo={signerInfo} onSignerInfoChange={setSignerInfo} />
+
+          {customFieldLabels.length > 0 ? (
+            <div data-demo-slot="custom-fields-card" className="rounded-lg border border-slate-300 bg-white p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-slate-900">Custom Fields</h3>
+              {isScanning ? (
+                <p className="text-xs text-slate-500">Scanning for anchor tags...</p>
+              ) : null}
+              <CustomFieldInputs
+                labels={customFieldLabels}
+                values={customFieldValues}
+                onValuesChange={setCustomFieldValues}
+                className="space-y-2 [&_label]:block [&_label]:text-xs [&_label]:font-medium [&_label]:text-slate-700 [&_input]:mt-1 [&_input]:block [&_input]:w-full [&_input]:rounded [&_input]:border [&_input]:border-slate-300 [&_input]:px-2 [&_input]:py-1 [&_input]:text-sm"
+              />
+              <button
+                type="button"
+                data-demo-slot="next-field-button"
+                className="w-full rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                onClick={handleNextCustomField}
+              >
+                Next unfilled field
+              </button>
+            </div>
+          ) : null}
+
           <SignaturePreview
             signerName={displayName}
             style={signatureStyle}
@@ -433,6 +494,8 @@ export function App() {
     handleDocumentLoadSuccess,
     errorMessage: documentErrorMessage,
   } = usePdfDocument(pdfInput)
+
+  const { fields: anchorFields, isScanning: isAnchorScanning } = useAnchorTags(pdfData)
 
   useEffect(() => {
     const linkId = 'esig-theme-link'
@@ -618,6 +681,8 @@ export function App() {
       <SigningArea
         key={String(templateMode)}
         initialFields={templateMode ? TEMPLATE_FIELDS : undefined}
+        anchorFields={anchorFields}
+        isScanning={isAnchorScanning}
         onPdfClear={() => setPdfInput(null)}
         pdfInput={pdfInput}
         pdfData={pdfData}
