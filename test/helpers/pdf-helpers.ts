@@ -93,6 +93,43 @@ export async function extractPageText(pdfBytes: Uint8Array, pageIndex = 0): Prom
   return extractPageContentTextOperators(pageContent).join(' ')
 }
 
+export async function extractPageContentStream(pdfBytes: Uint8Array, pageIndex = 0): Promise<string> {
+  const parsed = await PDFDocument.load(pdfBytes)
+  const page = parsed.getPages()[pageIndex]
+  if (!page) return ''
+  const contents = page.node.lookup(PDFName.of('Contents'))
+  if (!contents) return ''
+
+  const contentBytes =
+    contents instanceof PDFArray
+      ? contents
+          .asArray()
+          .map((entry) => parsed.context.lookup(entry))
+          .map(getContentStreamBytes)
+          .reduce((combined, chunk) => {
+            const next = new Uint8Array(combined.length + chunk.length)
+            next.set(combined)
+            next.set(chunk, combined.length)
+            return next
+          }, new Uint8Array())
+      : getContentStreamBytes(contents)
+
+  return new TextDecoder('latin1').decode(contentBytes)
+}
+
+export function extractPageRects(contentStream: string): Array<{ x: number; y: number; w: number; h: number }> {
+  const rects: Array<{ x: number; y: number; w: number; h: number }> = []
+  for (const match of contentStream.matchAll(/([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+re/g)) {
+    rects.push({
+      x: parseFloat(match[1]),
+      y: parseFloat(match[2]),
+      w: parseFloat(match[3]),
+      h: parseFloat(match[4]),
+    })
+  }
+  return rects
+}
+
 export async function createSourcePdf(pageCount = 1): Promise<Uint8Array> {
   const sourceDocument = await PDFDocument.create()
   for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) sourceDocument.addPage([600, 800])

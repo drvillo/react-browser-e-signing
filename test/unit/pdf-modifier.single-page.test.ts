@@ -187,3 +187,101 @@ describe('modifyPdf edge-cases', () => {
     expect(await extractPageText(outputBytes, 0)).toBe('')
   })
 })
+
+describe('modifyPdf custom fields', () => {
+  it('draws custom field value from signer customFields', async () => {
+    const sourceBytes = await createSourcePdf()
+    const outputBytes = await modifyPdf({
+      pdfBytes: sourceBytes,
+      fields: [buildField({ id: 'custom-1', type: 'custom', label: 'companyName' })],
+      signer: buildSigner({ customFields: { companyName: 'Acme Corp' } }),
+      signatureDataUrl: '',
+      pageDimensions: [buildPageDimension()],
+    })
+
+    expect(await extractPageText(outputBytes, 0)).toContain('Acme Corp')
+  })
+
+  it('draws white rectangle to erase anchor tag text', async () => {
+    const sourceBytes = await createSourcePdf()
+    const outputBytes = await modifyPdf({
+      pdfBytes: sourceBytes,
+      fields: [buildField({ id: 'custom-2', type: 'custom', label: 'companyName' })],
+      signer: buildSigner({ customFields: { companyName: 'Acme Corp' } }),
+      signatureDataUrl: '',
+      pageDimensions: [buildPageDimension()],
+    })
+
+    expect(outputBytes.length).toBeGreaterThan(sourceBytes.length)
+    expect(await extractPageText(outputBytes, 0)).toContain('Acme Corp')
+  })
+
+  it('draws white rect but no text when custom field value is missing', async () => {
+    const sourceBytes = await createSourcePdf()
+    const outputBytes = await modifyPdf({
+      pdfBytes: sourceBytes,
+      fields: [buildField({ id: 'custom-3', type: 'custom', label: 'missingField' })],
+      signer: buildSigner({ customFields: {} }),
+      signatureDataUrl: '',
+      pageDimensions: [buildPageDimension()],
+    })
+
+    const pageText = await extractPageText(outputBytes, 0)
+    expect(pageText).toBe('')
+    expect(outputBytes.length).toBeGreaterThan(sourceBytes.length)
+  })
+
+  it('handles custom + built-in fields together', async () => {
+    const sourceBytes = await createSourcePdf()
+    const outputBytes = await modifyPdf({
+      pdfBytes: sourceBytes,
+      fields: [
+        buildField({ id: 'sig-1', type: 'signature' }),
+        buildField({ id: 'name-1', type: 'fullName', yPercent: 20 }),
+        buildField({ id: 'date-1', type: 'date', yPercent: 30 }),
+        buildField({ id: 'custom-1', type: 'custom', label: 'companyName', yPercent: 40 }),
+      ],
+      signer: buildSigner({
+        firstName: 'Jane',
+        lastName: 'Doe',
+        customFields: { companyName: 'Acme Corp' },
+      }),
+      signatureDataUrl: SIGNATURE_DATA_URL,
+      pageDimensions: [buildPageDimension()],
+      dateText: '2026-04-05',
+    })
+
+    const pageText = await extractPageText(outputBytes, 0)
+    expect(await getPageXObjectCount(outputBytes, 0)).toBeGreaterThan(0)
+    expect(pageText).toContain('Jane Doe')
+    expect(pageText).toContain('2026-04-05')
+    expect(pageText).toContain('Acme Corp')
+  })
+
+  it('does not crash when customFields is undefined', async () => {
+    const sourceBytes = await createSourcePdf()
+    const outputBytes = await modifyPdf({
+      pdfBytes: sourceBytes,
+      fields: [buildField({ id: 'custom-4', type: 'custom', label: 'test' })],
+      signer: buildSigner(),
+      signatureDataUrl: '',
+      pageDimensions: [buildPageDimension()],
+    })
+
+    expect(await extractPageText(outputBytes, 0)).toBe('')
+    expect(outputBytes.length).toBeGreaterThan(sourceBytes.length)
+  })
+
+  it('handles empty customFields map', async () => {
+    const sourceBytes = await createSourcePdf()
+    const outputBytes = await modifyPdf({
+      pdfBytes: sourceBytes,
+      fields: [buildField({ id: 'custom-5', type: 'custom', label: 'anything' })],
+      signer: buildSigner({ customFields: {} }),
+      signatureDataUrl: '',
+      pageDimensions: [buildPageDimension()],
+    })
+
+    expect(await extractPageText(outputBytes, 0)).toBe('')
+  })
+})
