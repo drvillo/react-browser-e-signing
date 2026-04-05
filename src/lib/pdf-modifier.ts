@@ -1,5 +1,5 @@
 import fontkit from '@pdf-lib/fontkit'
-import { PDFDocument, StandardFonts } from 'pdf-lib'
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { mapToPoints } from './coordinate-mapper'
 import type { FieldPlacement, PdfPageDimensions, SignerInfo } from '../types'
 
@@ -58,6 +58,28 @@ export async function modifyPdf({
         width: pointRect.width,
         height: pointRect.height,
       })
+      continue
+    }
+
+    if (field.type === 'custom') {
+      page.drawRectangle({
+        x: pointRect.x,
+        y: pointRect.y,
+        width: pointRect.width,
+        height: pointRect.height,
+        color: rgb(1, 1, 1),
+      })
+
+      const customValue = field.label ? signer.customFields?.[field.label] ?? '' : ''
+      if (customValue) {
+        const textSize = Math.max(9, Math.min(16, pointRect.height * 0.6))
+        page.drawText(customValue, {
+          x: pointRect.x + 2,
+          y: pointRect.y + Math.max(0, (pointRect.height - textSize) / 2),
+          size: textSize,
+          font: helveticaFont,
+        })
+      }
       continue
     }
 

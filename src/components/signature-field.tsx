@@ -38,6 +38,7 @@ function getFieldPreviewText(field: FieldPlacement, preview: SignatureFieldPrevi
   if (field.type === 'fullName') return preview.fullName
   if (field.type === 'title') return preview.title
   if (field.type === 'date') return preview.dateText
+  if (field.type === 'custom' && field.label) return preview.customFields?.[field.label] ?? ''
   return ''
 }
 
@@ -136,6 +137,7 @@ export function SignatureField({ field, onUpdateField, onRemoveField, preview, c
       data-slot="signature-field"
       data-field-type={field.type}
       data-locked={isLocked ? true : undefined}
+      aria-readonly={isLocked ? true : undefined}
       className={cn(className)}
       style={{
         position: 'absolute',
@@ -167,7 +169,7 @@ export function SignatureField({ field, onUpdateField, onRemoveField, preview, c
         }}
       >
         <div data-slot="signature-field-preview">
-          <div data-slot="signature-field-label">{field.type}</div>
+          <div data-slot="signature-field-label">{field.type === 'custom' && field.label ? field.label : field.type}</div>
           {field.type === 'signature' && preview.signatureDataUrl ? (
             <img
               data-slot="signature-field-preview-image"
