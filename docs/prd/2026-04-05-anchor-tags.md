@@ -175,6 +175,57 @@ New public exports from `src/index.ts`:
 
 No breaking changes to existing API surface. Existing consumers who don't use anchor tags see no behavioral change.
 
+### INTEGRATION_GUIDELINES.md updates
+
+`INTEGRATION_GUIDELINES.md` is the single source of truth for the library's public API surface, composition patterns, and consumer wiring. It **must** be updated as part of this feature to remain accurate. Specific changes:
+
+**Section 2.2 Hooks** — add the `useAnchorTags` hook signature:
+
+```ts
+function useAnchorTags(
+  pdfData: ArrayBuffer | null,
+  options?: { locked?: boolean }
+): {
+  fields: FieldPlacement[]
+  isScanning: boolean
+  error: string | null
+}
+```
+
+**Section 2.1 Components** — add the `CustomFieldInputs` component signature:
+
+```ts
+interface CustomFieldInputsProps {
+  labels: string[]
+  values: Record<string, string>
+  onValuesChange: (nextValues: Record<string, string>) => void
+  className?: string
+}
+```
+
+**Section 2.3 Types** — update the type definitions:
+- `FieldType`: change to `'signature' | 'fullName' | 'title' | 'date' | 'custom'`
+- `FieldPlacement`: add `label?: string`
+- `SignerInfo`: add `customFields?: Record<string, string>`
+- `SignatureFieldPreview`: add `customFields?: Record<string, string>`
+
+**Section 2.5 Constants** — add new SLOTS entries for custom field inputs (e.g., `customFieldInputs`, `customFieldInputsLabel`, `customFieldInputsInput`).
+
+**Section 4** — add a new wiring example showing anchor tag integration:
+
+```tsx
+const { fields: anchorFields, isScanning } = useAnchorTags(pdfData)
+const { fields, addField, updateField, removeField, clearFields } = useFieldPlacement({
+  initialFields: anchorFields,
+})
+```
+
+**Section 5** — add a new `PatternF_anchorTagTemplate` composition pattern showing the recommended integration: upload PDF with markers, auto-detect fields, render `CustomFieldInputs` alongside `SignerDetailsPanel`, and use field positions for scroll navigation.
+
+**Section 6** — extend the field placement data flow to document the anchor tag path (PDF load -> text extraction -> regex scan -> auto-created locked fields) as an alternative to the manual palette-based flow.
+
+**Section 8** — add a consumer responsibility note: when using anchor tags, the consumer must wire `useAnchorTags` results to `useFieldPlacement.initialFields` and manage custom field values via `SignerInfo.customFields`.
+
 ### Security / permissions
 
 - PDF.js text extraction runs entirely in-browser. No data leaves the client.
@@ -220,30 +271,81 @@ None. No existing data formats change. `FieldType = 'custom'` is additive to the
 
 ## 9. Testing plan
 
+### Test fixtures
+
+**New fixture**: `test/fixtures/synthetic-anchor-contract.ts` — extends the existing `createSyntheticContractPdf` pattern. Creates a multi-page PDF with `{{ fieldName }}` markers drawn at known coordinates using pdf-lib `drawText`. This fixture must:
+- Include at least three anchor tags across two pages (e.g., `{{ companyName }}` and `{{ role }}` on page 1, `{{ agreementDate }}` on the signature page).
+- Use known x/y/font-size values so tests can assert position accuracy.
+- Include a page with zero anchor tags (to test selective scanning).
+- Optionally include edge-case variants: `{{ }}` (empty), `{{   spacedName   }}` (extra whitespace), and regular text containing `{` or `}` that is not a valid anchor tag.
+
+**Updated factory**: `test/helpers/field-factory.ts` — the `buildField` and `buildSigner` helpers must support the new `type: 'custom'`, `label`, and `customFields` properties.
+
 ### Unit tests
 
-- **`use-anchor-tags` hook**: test with synthetic PDFs containing various `{{ }}` patterns:
-  - Single tag, multiple tags, tags on different pages.
-  - Edge cases: empty name `{{ }}`, extra whitespace `{{   foo   }}`, no tags, nested braces `{{{ foo }}}`.
-  - Duplicate tag names produce separate fields with same label.
-  - Position accuracy: verify `xPercent`, `yPercent` match expected values from known PDF geometry.
-- **`pdf-modifier` custom field support**:
-  - Custom field value is drawn at correct position.
-  - White rectangle erasure covers the anchor tag bounding box.
-  - Missing custom field value (empty string) still draws the white rect (erases marker).
-- **`FieldType` extension**: existing tests continue to pass with the expanded union.
-- **`SignerInfo` extension**: existing code paths ignore `customFields` when not present.
+**New file: `test/unit/anchor-tags.test.ts`** — tests for the `scanAnchorTags` pure function (the non-React scanning logic extracted from `useAnchorTags`):
 
-### Integration tests
+| Test case | Description |
+|-----------|-------------|
+| single tag on one page | `{{ companyName }}` at known coordinates produces one `FieldPlacement` with `type: 'custom'`, `label: 'companyName'`, `locked: true`, and correct `xPercent`/`yPercent`/`widthPercent`/`heightPercent` within tolerance |
+| multiple tags on one page | Two tags produce two fields in document order |
+| tags across pages | Tags on page 0 and page 1 have correct `pageIndex` values |
+| extra whitespace | `{{   foo   }}` produces `label: 'foo'` |
+| empty name skipped | `{{ }}` produces no field |
+| nested braces | `{{{ foo }}}` — only the inner `{{ foo }}` match produces a field |
+| no tags | Plain PDF returns empty array |
+| duplicate labels | Two `{{ amount }}` tags produce two separate `FieldPlacement` objects with different ids but same label |
+| position accuracy | Fields from the synthetic fixture with known coordinates match expected percent values within +/- 1% tolerance |
+| stable ordering | Same PDF bytes produce the same field array on repeated calls |
 
-- Upload a test PDF with `{{ companyName }}` and `{{ role }}` markers.
-- Verify `useAnchorTags` returns two fields with correct labels and locked state.
-- Verify fields render in the overlay at the correct positions.
-- Fill in custom field values, sign, and verify the exported PDF contains the values and no visible `{{ }}` markers.
+**New file: `test/unit/use-anchor-tags.test.ts`** — React hook tests using `renderHook`:
+
+| Test case | Description |
+|-----------|-------------|
+| returns fields when pdfData has tags | Hook returns correct `fields` array after scanning completes |
+| isScanning lifecycle | `isScanning` is `true` during scan, `false` after |
+| null pdfData returns empty | `useAnchorTags(null)` returns `{ fields: [], isScanning: false, error: null }` |
+| error on corrupt data | Malformed PDF bytes produce `error` string, `fields: []` |
+| re-scans on pdfData change | Changing `pdfData` triggers a new scan and returns updated fields |
+| memoization | Same `pdfData` reference does not re-trigger scanning |
+
+**Updated file: `test/unit/pdf-modifier.single-page.test.ts`** — add tests in a new `describe('modifyPdf custom fields')` block:
+
+| Test case | Description |
+|-----------|-------------|
+| draws custom field value | A `type: 'custom'` field with `label: 'companyName'` and `signer.customFields.companyName = 'Acme Corp'` produces output text containing `'Acme Corp'` |
+| erases anchor tag text | Output PDF for a custom field draws a white rectangle — verified by checking content stream operators for a filled rect (`re f`) before the text draw |
+| missing custom field value | `signer.customFields` has no entry for the label — white rect is still drawn (erasing the marker), no text drawn |
+| custom + built-in fields coexist | A mix of `signature`, `fullName`, `date`, and `custom` fields all render correctly in the same output |
+| empty customFields map | `signer.customFields = {}` — custom fields get white rect erasure only, no crash |
+
+**Updated file: `test/unit/field-placement.test.ts`** — add tests for custom field type:
+
+| Test case | Description |
+|-----------|-------------|
+| addField with type custom | `addField({ type: 'custom', ... })` produces a field with `type: 'custom'` |
+| initialFields with custom type | Custom fields passed as `initialFields` are preserved with `label` and `locked` |
+
+**Existing tests (regression)**: all existing tests in `test/unit/pdf-modifier.single-page.test.ts`, `test/unit/pdf-modifier.multi-page.test.ts`, `test/unit/field-placement.test.ts`, `test/unit/coordinate-mapper.test.ts` must continue to pass without modification. The type extensions (`label?: string`, `customFields?: Record<string, string>`) are optional and backward-compatible.
 
 ### E2E tests (browser)
 
-- Full flow in the demo: upload PDF with anchor tags -> verify fields appear -> fill signer details + custom fields -> sign -> download -> verify output.
+**Updated file: `test/browser/signing-e2e.test.tsx`** — add a new test case in the existing describe block:
+
+| Test case | Description |
+|-----------|-------------|
+| anchor tag signing flow | Upload the synthetic anchor contract PDF -> verify custom field inputs appear in the sidebar -> fill `companyName` and `role` values -> place a manual signature field -> sign -> verify the output PDF contains the custom field values and a signature image, and does not contain raw `{{ }}` marker text |
+
+This test follows the existing pattern: render `<App />`, upload via `page.getByLabelText('Upload PDF').upload(file)`, fill inputs, click sign, assert on the signed blob bytes.
+
+### Test helpers updates
+
+**`test/helpers/field-factory.ts`**:
+- `buildField` must accept `type: 'custom'` and `label` in overrides, forwarding `label` to the output when present.
+- `buildSigner` must accept `customFields` in overrides, forwarding it to the output when present.
+
+**`test/helpers/pdf-helpers.ts`**:
+- Add a `extractPageRects` helper (or extend `extractPageText`) to verify white rectangle drawing in the output content stream (look for `re f` operators in the content stream at expected coordinates).
 
 ### Acceptance criteria checklist
 
@@ -255,6 +357,9 @@ None. No existing data formats change. `FieldType = 'custom'` is additive to the
 - [ ] `CustomFieldInputs` component is exported and documented.
 - [ ] All existing tests pass without modification.
 - [ ] New tests cover scanning, positioning, export, and edge cases.
+- [ ] `INTEGRATION_GUIDELINES.md` is updated with new hook, component, type, SLOTS, wiring, and composition pattern documentation.
+- [ ] `test/helpers/field-factory.ts` supports `type: 'custom'`, `label`, and `customFields`.
+- [ ] A synthetic anchor contract PDF fixture exists and is used by both unit and E2E tests.
 
 ## 10. Milestones
 
@@ -262,18 +367,21 @@ None. No existing data formats change. `FieldType = 'custom'` is additive to the
 
 - Implement `scanAnchorTags` pure function (PDF.js text extraction + regex + coordinate mapping).
 - Implement `useAnchorTags` hook wrapping the scanner with React state.
-- Unit tests for scanning logic.
+- Create `test/fixtures/synthetic-anchor-contract.ts` fixture.
+- Unit tests: `test/unit/anchor-tags.test.ts` (pure function) and `test/unit/use-anchor-tags.test.ts` (hook).
 
 ### M2: Type system & custom fields (1 day)
 
 - Extend `FieldType`, `FieldPlacement`, `SignerInfo` in `types.ts`.
-- Update `field-factory.ts` test helpers.
+- Update `test/helpers/field-factory.ts`: `buildField` supports `type: 'custom'` + `label`; `buildSigner` supports `customFields`.
+- Add field-placement unit tests for custom type.
 - Ensure all existing tests still compile and pass.
 
 ### M3: Export pipeline (1-2 days)
 
 - Update `modifyPdf` to handle `type === 'custom'` with white rect + text draw.
-- Unit tests for export with custom fields.
+- Add `extractPageRects` helper to `test/helpers/pdf-helpers.ts` for white rect verification.
+- Unit tests in `test/unit/pdf-modifier.single-page.test.ts`: custom field value draw, white rect erasure, missing value, coexistence with built-in types.
 
 ### M4: UI components (1-2 days)
 
@@ -288,11 +396,12 @@ None. No existing data formats change. `FieldType = 'custom'` is additive to the
 - Add "Next field" scroll navigation.
 - Create a sample test PDF with anchor tags for the demo.
 
-### M6: Testing & polish (1-2 days)
+### M6: Documentation, testing & polish (1-2 days)
 
-- Integration and E2E tests.
+- Update `INTEGRATION_GUIDELINES.md`: new hook signature (section 2.2), new component signature (section 2.1), updated types (section 2.3), new SLOTS (section 2.5), anchor tag wiring example (section 4), `PatternF_anchorTagTemplate` composition pattern (section 5), extended field placement data flow (section 6), consumer responsibilities note (section 8).
+- E2E test in `test/browser/signing-e2e.test.tsx`: anchor tag signing flow.
 - Edge case hardening.
-- Documentation updates in README.
+- README updates.
 
 ### Dependencies
 
