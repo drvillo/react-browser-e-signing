@@ -12,6 +12,7 @@ const FIELD_LABELS: Record<FieldType, string> = {
   fullName: 'Full Name',
   title: 'Title',
   date: 'Date',
+  custom: 'Custom',
 }
 
 const FIELD_TYPES: FieldType[] = ['signature', 'fullName', 'title', 'date']

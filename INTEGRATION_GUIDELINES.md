@@ -111,6 +111,15 @@ interface SigningCompleteProps {
 }
 ```
 
+```ts
+interface CustomFieldInputsProps {
+  labels: string[]
+  values: Record<string, string>
+  onValuesChange: (nextValues: Record<string, string>) => void
+  className?: string
+}
+```
+
 ### 2.2 Hooks
 
 ```ts
@@ -169,10 +178,21 @@ interface UsePdfPageVisibilityReturn {
 function usePdfPageVisibility(options: UsePdfPageVisibilityOptions): UsePdfPageVisibilityReturn
 ```
 
+```ts
+function useAnchorTags(
+  pdfData: ArrayBuffer | null,
+  options?: { locked?: boolean }
+): {
+  fields: FieldPlacement[]
+  isScanning: boolean
+  error: string | null
+}
+```
+
 ### 2.3 Types
 
 ```ts
-type FieldType = 'signature' | 'fullName' | 'title' | 'date'
+type FieldType = 'signature' | 'fullName' | 'title' | 'date' | 'custom'
 
 interface FieldPlacement {
   id: string
@@ -182,12 +202,15 @@ interface FieldPlacement {
   yPercent: number
   widthPercent: number
   heightPercent: number
+  locked?: boolean
+  label?: string
 }
 
 interface SignerInfo {
   firstName: string
   lastName: string
   title: string
+  customFields?: Record<string, string>
 }
 
 type SignatureStyle =
@@ -210,6 +233,7 @@ interface SignatureFieldPreview {
   fullName: string
   title: string
   dateText: string
+  customFields?: Record<string, string>
 }
 ```
 
@@ -284,6 +308,11 @@ const SLOTS = {
   signatureFieldPreviewText: 'signature-field-preview-text',
   signatureFieldRemove: 'signature-field-remove',
   signatureFieldResize: 'signature-field-resize',
+  signatureFieldLock: 'signature-field-lock',
+  customFieldInputs: 'custom-field-inputs',
+  customFieldInputsField: 'custom-field-inputs-field',
+  customFieldInputsLabel: 'custom-field-inputs-label',
+  customFieldInputsInput: 'custom-field-inputs-input',
   fieldPalette: 'field-palette',
   fieldPaletteButton: 'field-palette-button',
   signerPanel: 'signer-panel',
@@ -375,6 +404,43 @@ const { currentPageIndex, scrollToPage } = usePdfPageVisibility({
 </div>
 ```
 
+### Anchor tag wiring
+
+```tsx
+const { fields: anchorFields, isScanning } = useAnchorTags(pdfData)
+const { fields, addField, updateField, removeField, clearFields } = useFieldPlacement({
+  initialFields: anchorFields,
+})
+```
+
+When using anchor tags, pass `signerInfo` with `customFields` populated from user input:
+
+```tsx
+const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({})
+const signerWithCustomFields = { ...signerInfo, customFields: customFieldValues }
+
+// Pass to modifyPdf
+const signedPdfBytes = await modifyPdf({
+  pdfBytes: inputBytes,
+  fields,
+  signer: signerWithCustomFields,
+  signatureDataUrl,
+  pageDimensions,
+})
+```
+
+Render custom field inputs alongside signer details:
+
+```tsx
+const customLabels = fields.filter(f => f.type === 'custom' && f.label).map(f => f.label!)
+
+<CustomFieldInputs
+  labels={customLabels}
+  values={customFieldValues}
+  onValuesChange={setCustomFieldValues}
+/>
+```
+
 ## 5) Composition patterns
 
 ### PatternA_desktopStickySidebar
@@ -430,7 +496,26 @@ const handlePageChange = (pageIndex: number) =>
 - no sidebar
 - recommended for constrained panes/modals
 
+### PatternF_anchorTagTemplate
+
+- Template author embeds `{{ fieldName }}` markers in a Word/Google Docs document, exports to PDF
+- Consumer uploads the PDF; `useAnchorTags(pdfData)` scans for markers and returns `FieldPlacement[]`
+- Anchor fields are passed to `useFieldPlacement({ initialFields: anchorFields })` as locked custom fields
+- Render `CustomFieldInputs` in the sidebar for signer to fill values
+- Use `field.yPercent` + `field.pageIndex` with `scrollToPage` for "next field" navigation
+- At export, `modifyPdf` draws a white rectangle over each `{{ }}` marker and stamps the signer's value
+
+```tsx
+const { fields: anchorFields, isScanning } = useAnchorTags(pdfData)
+const { fields } = useFieldPlacement({ initialFields: anchorFields })
+const customLabels = fields.filter(f => f.type === 'custom' && f.label).map(f => f.label!)
+
+<CustomFieldInputs labels={customLabels} values={values} onValuesChange={setValues} />
+```
+
 ## 6) Field placement data flow
+
+### Manual placement (palette-based)
 
 1. user toggles a field in `FieldPalette`
 2. `FieldOverlay` enters placing mode (`data-state='placing'`, crosshair cursor)
@@ -439,6 +524,16 @@ const handlePageChange = (pageIndex: number) =>
 5. `useFieldPlacement.addField` adds a `FieldPlacement` with `pageIndex`
 6. `SignatureField` supports drag move + corner resize
 7. `modifyPdf` maps percentages to PDF points using `mapToPoints` for each page
+
+### Anchor tag placement (automatic)
+
+1. PDF loaded → `useAnchorTags(pdfData)` calls `pdfjs.getDocument()` → for each page calls `page.getTextContent()`
+2. Regex scan `/\{\{\s*(\w+)\s*\}\}/g` on each text item's string
+3. Matched text item bounds are converted to percent-of-page coordinates via `mapFromPoints`-style math
+4. Returns `FieldPlacement[]` with `type: 'custom'`, `label`, `locked: true`, and page-accurate positions
+5. Consumer passes these as `initialFields` to `useFieldPlacement`
+6. `SignatureField` renders them as locked fields with label display
+7. At export, `modifyPdf` draws a white `drawRectangle` over the anchor tag text, then stamps the value from `signer.customFields[field.label]`
 
 ## 7) Decision tree (agent-optimized)
 
@@ -469,3 +564,5 @@ IF documents are usually 1-2 pages:
 - manage final download flow and success state
 - choose mobile/desktop strategy (`scroll` vs `single`)
 - style components via default `styles.css` or custom `[data-slot]` selectors
+- when using anchor tags: wire `useAnchorTags` results to `useFieldPlacement.initialFields` and manage custom field values via `SignerInfo.customFields`
+- when using anchor tags: render `CustomFieldInputs` or custom UI to collect values for each detected `label`

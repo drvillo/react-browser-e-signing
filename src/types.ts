@@ -1,4 +1,4 @@
-export type FieldType = 'signature' | 'fullName' | 'title' | 'date'
+export type FieldType = 'signature' | 'fullName' | 'title' | 'date' | 'custom'
 
 export interface FieldPlacement {
   id: string
@@ -9,12 +9,14 @@ export interface FieldPlacement {
   widthPercent: number
   heightPercent: number
   locked?: boolean
+  label?: string
 }
 
 export interface SignerInfo {
   firstName: string
   lastName: string
   title: string
+  customFields?: Record<string, string>
 }
 
 export interface SignatureStyleTyped {
@@ -52,4 +54,5 @@ export interface SignatureFieldPreview {
   fullName: string
   title: string
   dateText: string
+  customFields?: Record<string, string>
 }

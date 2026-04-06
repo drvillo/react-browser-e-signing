@@ -194,6 +194,45 @@ describe('useFieldPlacement', () => {
     expect(result.current.fields).toHaveLength(0)
   })
 
+  it('addField with type custom produces a custom field', () => {
+    const { result } = renderHook(() => useFieldPlacement())
+
+    act(() => {
+      result.current.addField({
+        pageIndex: 0,
+        type: 'custom',
+        xPercent: 15,
+        yPercent: 25,
+      })
+    })
+
+    expect(result.current.fields).toHaveLength(1)
+    expect(result.current.fields[0]?.type).toBe('custom')
+  })
+
+  it('initialFields with custom type preserves label and locked', () => {
+    const initial: FieldPlacement[] = [
+      {
+        id: 'custom-1',
+        type: 'custom',
+        pageIndex: 0,
+        xPercent: 10,
+        yPercent: 20,
+        widthPercent: 30,
+        heightPercent: 5,
+        locked: true,
+        label: 'companyName',
+      },
+    ]
+    const { result } = renderHook(() => useFieldPlacement({ initialFields: initial }))
+
+    expect(result.current.fields).toHaveLength(1)
+    expect(result.current.fields[0]).toEqual(initial[0])
+    expect(result.current.fields[0]?.type).toBe('custom')
+    expect(result.current.fields[0]?.label).toBe('companyName')
+    expect(result.current.fields[0]?.locked).toBe(true)
+  })
+
   it('does not reset when initialFields option reference changes after mount', () => {
     const initialA: FieldPlacement[] = [
       {

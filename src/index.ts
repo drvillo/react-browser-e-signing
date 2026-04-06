@@ -12,11 +12,13 @@ export { SignerDetailsPanel } from './components/signer-details-panel'
 export { SignaturePreview } from './components/signature-preview'
 export { SignaturePad } from './components/signature-pad'
 export { SigningComplete } from './components/signing-complete'
+export { CustomFieldInputs } from './components/custom-field-inputs'
 
 export { usePdfDocument } from './hooks/use-pdf-document'
 export { usePdfPageVisibility } from './hooks/use-pdf-page-visibility'
 export { useFieldPlacement } from './hooks/use-field-placement'
 export { useSignatureRenderer } from './hooks/use-signature-renderer'
+export { useAnchorTags, scanAnchorTags } from './hooks/use-anchor-tags'
 
 export type { UsePdfPageVisibilityOptions, UsePdfPageVisibilityReturn } from './hooks/use-pdf-page-visibility'
 
