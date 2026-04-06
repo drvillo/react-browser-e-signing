@@ -679,7 +679,7 @@ export function App() {
       </section>
 
       <SigningArea
-        key={String(templateMode)}
+        key={`${templateMode}-${anchorFields.length}`}
         initialFields={templateMode ? TEMPLATE_FIELDS : undefined}
         anchorFields={anchorFields}
         isScanning={isAnchorScanning}

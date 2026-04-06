@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FieldPlacement } from '../types'
+import { getConfig } from '../lib/config'
 
 const ANCHOR_TAG_REGEX = /\{\{\s*(\w+)\s*\}\}/g
 
@@ -57,7 +58,12 @@ export async function scanAnchorTags(
 ): Promise<FieldPlacement[]> {
   const locked = options?.locked ?? true
   const pdfjsLib = await import('pdfjs-dist')
-  const pdfDocument = await pdfjsLib.getDocument({ data: pdfData }).promise
+  const configuredWorkerSrc = getConfig().pdfWorkerSrc
+  if (configuredWorkerSrc && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = configuredWorkerSrc
+  }
+  const dataCopy = pdfData.slice(0)
+  const pdfDocument = await pdfjsLib.getDocument({ data: dataCopy }).promise
   const matches: AnchorTagMatch[] = []
 
   for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
