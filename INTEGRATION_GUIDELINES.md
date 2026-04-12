@@ -11,7 +11,7 @@
   - import `getPdfWorkerSrc` from `@drvillo/react-browser-e-signing/worker`
   - call `configure({ pdfWorkerSrc: getPdfWorkerSrc() })`
 
-## 2) Full Public API (post-change)
+## 2) Full Public API
 
 ### 2.1 Components
 
@@ -49,6 +49,8 @@ interface FieldOverlayProps {
   onAddField: (input: { pageIndex: number; type: FieldType; xPercent: number; yPercent: number }) => void
   onUpdateField: (fieldId: string, partial: Partial<FieldPlacement>) => void
   onRemoveField: (fieldId: string) => void
+  onUpdateCustomValue?: (label: string, value: string) => void
+  onCustomFieldRenamed?: (oldLabel: string, newLabel: string) => void
   preview: SignatureFieldPreview
   className?: string
 }
@@ -60,6 +62,8 @@ interface SignatureFieldProps {
   onUpdateField: (fieldId: string, partial: Partial<FieldPlacement>) => void
   onRemoveField: (fieldId: string) => void
   preview: SignatureFieldPreview
+  onUpdateCustomValue?: (label: string, value: string) => void
+  onCustomFieldRenamed?: (oldLabel: string, newLabel: string) => void
   className?: string
 }
 ```
@@ -68,6 +72,18 @@ interface SignatureFieldProps {
 interface FieldPaletteProps {
   selectedFieldType: FieldType | null
   onSelectFieldType: (fieldType: FieldType | null) => void
+  fieldTypes?: FieldType[]   // defaults to ['signature', 'fullName', 'title', 'date'] — excludes 'custom'
+  className?: string
+}
+```
+
+```ts
+interface CustomFieldsPanelProps {
+  fields: FieldPlacement[]
+  values: Record<string, string>
+  onValuesChange: (nextValues: Record<string, string>) => void
+  isPlacingField: boolean
+  onTogglePlacing: () => void
   className?: string
 }
 ```
@@ -134,9 +150,10 @@ function usePdfDocument(pdfInput: PdfInput): {
 function useFieldPlacement(options?: {
   defaultWidthPercent?: number
   defaultHeightPercent?: number
+  initialFields?: FieldPlacement[]
 }): {
   fields: FieldPlacement[]
-  addField: (input: { pageIndex: number; type: FieldType; xPercent: number; yPercent: number }) => FieldPlacement
+  addField: (input: { pageIndex: number; type: FieldType; xPercent: number; yPercent: number; label?: string }) => FieldPlacement
   updateField: (id: string, partial: Partial<FieldPlacement>) => void
   removeField: (id: string) => void
   clearFields: () => void
@@ -172,7 +189,7 @@ function usePdfPageVisibility(options: UsePdfPageVisibilityOptions): UsePdfPageV
 ### 2.3 Types
 
 ```ts
-type FieldType = 'signature' | 'fullName' | 'title' | 'date'
+type FieldType = 'signature' | 'fullName' | 'title' | 'date' | 'custom'
 
 interface FieldPlacement {
   id: string
@@ -182,12 +199,14 @@ interface FieldPlacement {
   yPercent: number
   widthPercent: number
   heightPercent: number
+  label?: string   // required for 'custom' fields; used as the key in SignerInfo.customFields
 }
 
 interface SignerInfo {
   firstName: string
   lastName: string
   title: string
+  customFields?: Record<string, string>
 }
 
 type SignatureStyle =
@@ -210,6 +229,7 @@ interface SignatureFieldPreview {
   fullName: string
   title: string
   dateText: string
+  customFields?: Record<string, string>
 }
 ```
 
@@ -284,6 +304,13 @@ const SLOTS = {
   signatureFieldPreviewText: 'signature-field-preview-text',
   signatureFieldRemove: 'signature-field-remove',
   signatureFieldResize: 'signature-field-resize',
+  signatureFieldLabelInput: 'signature-field-label-input',
+  signatureFieldValueInput: 'signature-field-value-input',
+  customFieldsPanel: 'custom-fields-panel',
+  customFieldsPanelHeading: 'custom-fields-panel-heading',
+  customFieldsPanelLabel: 'custom-fields-panel-label',
+  customFieldsPanelInput: 'custom-fields-panel-input',
+  customFieldsPanelAddButton: 'custom-fields-panel-add-button',
   fieldPalette: 'field-palette',
   fieldPaletteButton: 'field-palette-button',
   signerPanel: 'signer-panel',
@@ -315,7 +342,7 @@ const SLOTS = {
 } as const
 ```
 
-## 3) Multi-Page behavior (post-change)
+## 3) Multi-Page behavior
 
 - `pageMode='scroll'`:
   - all pages rendered in vertical stack
@@ -329,7 +356,91 @@ const SLOTS = {
   - add `FieldPalette`, `PdfPageNavigator`, or custom controls directly in viewer toolbar
   - avoids losing field placement controls while moving across pages
 
-## 4) Required wiring for page-aware UI
+## 4) Custom fields wiring
+
+Custom fields let consumers add freeform labeled fields to any PDF. The workflow is: place → label inline → optionally fill value inline or via `CustomFieldsPanel`.
+
+### State the consumer owns
+
+```tsx
+const [selectedFieldType, setSelectedFieldType] = useState<FieldType | null>(null)
+const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({})
+```
+
+### Wire `CustomFieldsPanel` to drive placement
+
+```tsx
+<CustomFieldsPanel
+  fields={fields}
+  values={customFieldValues}
+  onValuesChange={setCustomFieldValues}
+  isPlacingField={selectedFieldType === 'custom'}
+  onTogglePlacing={() =>
+    setSelectedFieldType((prev) => (prev === 'custom' ? null : 'custom'))
+  }
+/>
+```
+
+`isPlacingField` tells the panel which state to show ("Click on the PDF to place…" vs. "+ New field"). `onTogglePlacing` hands control of `selectedFieldType` back to the consumer so `FieldOverlay` also responds correctly.
+
+### Wire `FieldOverlay` for placement, value updates, and renames
+
+```tsx
+renderOverlay={(pageIndex) => (
+  <FieldOverlay
+    pageIndex={pageIndex}
+    fields={fields}
+    selectedFieldType={selectedFieldType}
+    onAddField={(input) => { addField(input); setSelectedFieldType(null) }}
+    onUpdateField={updateField}
+    onRemoveField={removeField}
+    onUpdateCustomValue={(label, value) =>
+      setCustomFieldValues((prev) => ({ ...prev, [label]: value }))
+    }
+    onCustomFieldRenamed={(oldLabel, newLabel) =>
+      setCustomFieldValues((prev) => {
+        const { [oldLabel]: value, ...rest } = prev
+        return { ...rest, [newLabel]: value ?? '' }
+      })
+    }
+    preview={fieldPreview}
+  />
+)}
+```
+
+`onUpdateCustomValue` fires when the user commits a value via inline editing inside `SignatureField`. `onCustomFieldRenamed` fires when the user renames a label; the consumer must migrate any stored value from the old key to the new key.
+
+### Inline editing UX (managed by `SignatureField`)
+
+When a custom field is placed without a label:
+1. `SignatureField` immediately enters label-editing mode and focuses the label input.
+2. The user types a label and commits with Enter, Tab, or blur.
+3. On Tab or Enter the field transitions to value-editing mode; on blur/Escape it returns to idle.
+4. When the value is committed, `onUpdateCustomValue(label, value)` fires and `CustomFieldsPanel` updates.
+
+Consumers can also edit values directly in `CustomFieldsPanel` — both paths write to the same `customFieldValues` map.
+
+### Pass custom values to `modifyPdf`
+
+```tsx
+const signerWithCustomFields: SignerInfo = {
+  ...signerInfo,
+  customFields: customFieldValues,
+}
+
+const signedPdfBytes = await modifyPdf({
+  pdfBytes: inputBytes,
+  fields,
+  signer: signerWithCustomFields,
+  signatureDataUrl,
+  pageDimensions,
+  dateText,
+})
+```
+
+`modifyPdf` reads `signer.customFields[field.label]` for each `type === 'custom'` field and stamps the value onto the PDF.
+
+## 5) Required wiring for page-aware UI
 
 ```tsx
 const viewerContainerRef = useRef<HTMLDivElement | null>(null)
@@ -365,9 +476,18 @@ const { currentPageIndex, scrollToPage } = usePdfPageVisibility({
         pageIndex={pageIndex}
         fields={fields}
         selectedFieldType={selectedFieldType}
-        onAddField={handleAddField}
+        onAddField={(input) => { addField(input); setSelectedFieldType(null) }}
         onUpdateField={updateField}
         onRemoveField={removeField}
+        onUpdateCustomValue={(label, value) =>
+          setCustomFieldValues((prev) => ({ ...prev, [label]: value }))
+        }
+        onCustomFieldRenamed={(oldLabel, newLabel) =>
+          setCustomFieldValues((prev) => {
+            const { [oldLabel]: value, ...rest } = prev
+            return { ...rest, [newLabel]: value ?? '' }
+          })
+        }
         preview={fieldPreview}
       />
     )}
@@ -375,7 +495,7 @@ const { currentPageIndex, scrollToPage } = usePdfPageVisibility({
 </div>
 ```
 
-## 5) Composition patterns
+## 6) Composition patterns
 
 ### PatternA_desktopStickySidebar
 
@@ -386,6 +506,13 @@ const { currentPageIndex, scrollToPage } = usePdfPageVisibility({
 ```tsx
 <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
   <SignerDetailsPanel signerInfo={signerInfo} onSignerInfoChange={setSignerInfo} />
+  <CustomFieldsPanel
+    fields={fields}
+    values={customFieldValues}
+    onValuesChange={setCustomFieldValues}
+    isPlacingField={selectedFieldType === 'custom'}
+    onTogglePlacing={() => setSelectedFieldType((prev) => (prev === 'custom' ? null : 'custom'))}
+  />
   <SignaturePreview
     signerName={displayName}
     style={signatureStyle}
@@ -430,17 +557,64 @@ const handlePageChange = (pageIndex: number) =>
 - no sidebar
 - recommended for constrained panes/modals
 
-## 6) Field placement data flow
+### PatternF_customFields
 
-1. user toggles a field in `FieldPalette`
+- Use `CustomFieldsPanel` in the sidebar; it owns the "+ New field" button
+- Do not add `'custom'` to `FieldPalette.fieldTypes` when `CustomFieldsPanel` is present — each is a standalone entry point
+- When the user clicks "+ New field", `onTogglePlacing` sets `selectedFieldType = 'custom'`; `FieldOverlay` enters crosshair mode
+- After placement, `SignatureField` auto-enters label-edit mode; Tab/Enter transitions to value-edit mode
+- `onUpdateCustomValue` and `onCustomFieldRenamed` propagate changes back to consumer state
+- `CustomFieldsPanel` re-renders automatically once `fields` contains entries with labels
+
+```tsx
+// Minimal custom fields integration
+const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({})
+
+<CustomFieldsPanel
+  fields={fields}
+  values={customFieldValues}
+  onValuesChange={setCustomFieldValues}
+  isPlacingField={selectedFieldType === 'custom'}
+  onTogglePlacing={() => setSelectedFieldType((prev) => (prev === 'custom' ? null : 'custom'))}
+/>
+
+// In renderOverlay:
+onUpdateCustomValue={(label, value) =>
+  setCustomFieldValues((prev) => ({ ...prev, [label]: value }))
+}
+onCustomFieldRenamed={(oldLabel, newLabel) =>
+  setCustomFieldValues((prev) => {
+    const { [oldLabel]: value, ...rest } = prev
+    return { ...rest, [newLabel]: value ?? '' }
+  })
+}
+```
+
+## 7) Field placement data flow
+
+### Standard field placement (palette-based)
+
+1. User toggles a field type in `FieldPalette`
 2. `FieldOverlay` enters placing mode (`data-state='placing'`, crosshair cursor)
-3. user clicks overlay on target page
-4. overlay computes `xPercent/yPercent` from click position
-5. `useFieldPlacement.addField` adds a `FieldPlacement` with `pageIndex`
-6. `SignatureField` supports drag move + corner resize
-7. `modifyPdf` maps percentages to PDF points using `mapToPoints` for each page
+3. User clicks on the overlay on the target page
+4. Overlay computes `xPercent/yPercent` from click position relative to page
+5. `onAddField` calls `useFieldPlacement.addField`, which appends a `FieldPlacement` with a unique `id`
+6. Consumer resets `selectedFieldType` to `null`
+7. `SignatureField` supports drag-to-move + corner resize
+8. `modifyPdf` maps `xPercent/yPercent/widthPercent/heightPercent` to PDF points via `mapToPoints` per page
 
-## 7) Decision tree (agent-optimized)
+### Custom field placement
+
+Steps 1–8 above apply, plus:
+
+9. `SignatureField` immediately enters label-edit mode (no label yet)
+10. User types a label and commits → `onUpdateField(id, { label })` fires
+11. If committed via Tab or Enter, value-edit mode activates → `onUpdateCustomValue(label, value)` fires on blur
+12. `CustomFieldsPanel` derives its displayed fields from `fields.filter(f => f.type === 'custom' && f.label)`
+13. On rename: `onCustomFieldRenamed(oldLabel, newLabel)` → consumer migrates value key
+14. At export, `modifyPdf` draws a white background over the field area and stamps `signer.customFields[field.label]`
+
+## 8) Decision tree (agent-optimized)
 
 ```txt
 IF desktop-first:
@@ -458,14 +632,21 @@ IF multi-step signing flow:
 IF embedded in modal or constrained panel:
   use PatternE_embeddedMinimal
 
+IF document has freeform labeled fields:
+  use PatternF_customFields
+
 IF documents are usually 1-2 pages:
   default scroll mode is enough
 ```
 
-## 8) Consumer responsibilities
+## 9) Consumer responsibilities
 
 - manage layout (sticky/fixed/sidebar/wizard)
 - manage app-level validation and confirmation UX
 - manage final download flow and success state
 - choose mobile/desktop strategy (`scroll` vs `single`)
 - style components via default `styles.css` or custom `[data-slot]` selectors
+- own `customFieldValues: Record<string, string>` state and pass it into `SignerInfo.customFields` before calling `modifyPdf`
+- handle `onUpdateCustomValue` to merge inline-edited values into `customFieldValues`
+- handle `onCustomFieldRenamed` to migrate the value stored under the old label key to the new key
+- render `CustomFieldsPanel` (or equivalent custom UI) to let signers fill custom field values and trigger placement mode

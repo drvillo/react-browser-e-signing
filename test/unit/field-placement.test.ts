@@ -101,7 +101,6 @@ describe('useFieldPlacement', () => {
         yPercent: 10,
         widthPercent: 20,
         heightPercent: 6,
-        locked: true,
       },
     ]
     const { result } = renderHook(() => useFieldPlacement({ initialFields: initial }))
@@ -113,14 +112,13 @@ describe('useFieldPlacement', () => {
   it('appends addField after initialFields', () => {
     const initial: FieldPlacement[] = [
       {
-        id: 'locked-1',
+        id: 'initial-1',
         type: 'fullName',
         pageIndex: 0,
         xPercent: 1,
         yPercent: 2,
         widthPercent: 30,
         heightPercent: 5,
-        locked: true,
       },
     ]
     const { result } = renderHook(() => useFieldPlacement({ initialFields: initial }))
@@ -135,12 +133,11 @@ describe('useFieldPlacement', () => {
     })
 
     expect(result.current.fields).toHaveLength(2)
-    expect(result.current.fields[0]?.id).toBe('locked-1')
+    expect(result.current.fields[0]?.id).toBe('initial-1')
     expect(result.current.fields[1]?.type).toBe('date')
-    expect(result.current.fields[1]?.locked).toBeUndefined()
   })
 
-  it('clearFields removes initial and locked fields', () => {
+  it('clearFields removes all fields including initial ones', () => {
     const { result } = renderHook(() =>
       useFieldPlacement({
         initialFields: [
@@ -152,7 +149,6 @@ describe('useFieldPlacement', () => {
             yPercent: 0,
             widthPercent: 10,
             heightPercent: 5,
-            locked: true,
           },
         ],
       })
@@ -164,34 +160,69 @@ describe('useFieldPlacement', () => {
     expect(result.current.fields).toHaveLength(0)
   })
 
-  it('updateField and removeField work on locked fields programmatically', () => {
+  it('updateField and removeField work on any field', () => {
     const { result } = renderHook(() =>
       useFieldPlacement({
         initialFields: [
           {
-            id: 'locked-id',
+            id: 'field-id',
             type: 'signature',
             pageIndex: 0,
             xPercent: 10,
             yPercent: 10,
             widthPercent: 25,
             heightPercent: 5,
-            locked: true,
           },
         ],
       })
     )
 
     act(() => {
-      result.current.updateField('locked-id', { xPercent: 33 })
+      result.current.updateField('field-id', { xPercent: 33 })
     })
     expect(result.current.fields[0]?.xPercent).toBe(33)
-    expect(result.current.fields[0]?.locked).toBe(true)
 
     act(() => {
-      result.current.removeField('locked-id')
+      result.current.removeField('field-id')
     })
     expect(result.current.fields).toHaveLength(0)
+  })
+
+  it('addField with type custom produces a custom field', () => {
+    const { result } = renderHook(() => useFieldPlacement())
+
+    act(() => {
+      result.current.addField({
+        pageIndex: 0,
+        type: 'custom',
+        xPercent: 15,
+        yPercent: 25,
+      })
+    })
+
+    expect(result.current.fields).toHaveLength(1)
+    expect(result.current.fields[0]?.type).toBe('custom')
+  })
+
+  it('initialFields with custom type preserves label', () => {
+    const initial: FieldPlacement[] = [
+      {
+        id: 'custom-1',
+        type: 'custom',
+        pageIndex: 0,
+        xPercent: 10,
+        yPercent: 20,
+        widthPercent: 30,
+        heightPercent: 5,
+        label: 'companyName',
+      },
+    ]
+    const { result } = renderHook(() => useFieldPlacement({ initialFields: initial }))
+
+    expect(result.current.fields).toHaveLength(1)
+    expect(result.current.fields[0]).toEqual(initial[0])
+    expect(result.current.fields[0]?.type).toBe('custom')
+    expect(result.current.fields[0]?.label).toBe('companyName')
   })
 
   it('does not reset when initialFields option reference changes after mount', () => {

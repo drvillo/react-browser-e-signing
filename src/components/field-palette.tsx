@@ -4,6 +4,7 @@ import { cn } from '../lib/cn'
 interface FieldPaletteProps {
   selectedFieldType: FieldType | null
   onSelectFieldType: (fieldType: FieldType | null) => void
+  fieldTypes?: FieldType[]
   className?: string
 }
 
@@ -12,14 +13,15 @@ const FIELD_LABELS: Record<FieldType, string> = {
   fullName: 'Full Name',
   title: 'Title',
   date: 'Date',
+  custom: 'Custom',
 }
 
-const FIELD_TYPES: FieldType[] = ['signature', 'fullName', 'title', 'date']
+const DEFAULT_FIELD_TYPES: FieldType[] = ['signature', 'fullName', 'title', 'date']
 
-export function FieldPalette({ selectedFieldType, onSelectFieldType, className }: FieldPaletteProps) {
+export function FieldPalette({ selectedFieldType, onSelectFieldType, fieldTypes = DEFAULT_FIELD_TYPES, className }: FieldPaletteProps) {
   return (
     <div data-slot="field-palette" className={cn(className)}>
-      {FIELD_TYPES.map((fieldType) => {
+      {fieldTypes.map((fieldType) => {
         const isSelected = selectedFieldType === fieldType
         return (
           <button

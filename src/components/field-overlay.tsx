@@ -10,6 +10,8 @@ interface FieldOverlayProps {
   onAddField: (input: { pageIndex: number; type: FieldType; xPercent: number; yPercent: number }) => void
   onUpdateField: (fieldId: string, partial: Partial<FieldPlacement>) => void
   onRemoveField: (fieldId: string) => void
+  onUpdateCustomValue?: (label: string, value: string) => void
+  onCustomFieldRenamed?: (oldLabel: string, newLabel: string) => void
   preview: SignatureFieldPreview
   className?: string
 }
@@ -21,6 +23,8 @@ export function FieldOverlay({
   onAddField,
   onUpdateField,
   onRemoveField,
+  onUpdateCustomValue,
+  onCustomFieldRenamed,
   preview,
   className,
 }: FieldOverlayProps) {
@@ -61,6 +65,8 @@ export function FieldOverlay({
           field={field}
           onUpdateField={onUpdateField}
           onRemoveField={onRemoveField}
+          onUpdateCustomValue={onUpdateCustomValue}
+          onCustomFieldRenamed={onCustomFieldRenamed}
           preview={preview}
         />
       ))}

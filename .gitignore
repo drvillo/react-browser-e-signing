@@ -2,6 +2,7 @@ node_modules
 
 dist
 dist-demo
+output
 
 # Copied next to worker/index.mjs for local demo (same layout as published dist/)
 worker/pdf.worker.min.mjs

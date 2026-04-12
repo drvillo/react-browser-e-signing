@@ -9,7 +9,7 @@ export function buildField(overrides: Partial<FieldPlacement> = {}): FieldPlacem
     yPercent: overrides.yPercent ?? 10,
     widthPercent: overrides.widthPercent ?? 25,
     heightPercent: overrides.heightPercent ?? 6,
-    ...(overrides.locked !== undefined && { locked: overrides.locked }),
+    ...(overrides.label !== undefined && { label: overrides.label }),
   }
 }
 
@@ -18,6 +18,7 @@ export function buildSigner(overrides: Partial<SignerInfo> = {}): SignerInfo {
     firstName: overrides.firstName ?? 'Jane',
     lastName: overrides.lastName ?? 'Doe',
     title: overrides.title ?? 'CEO',
+    ...(overrides.customFields !== undefined && { customFields: overrides.customFields }),
   }
 }
 

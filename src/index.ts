@@ -12,6 +12,8 @@ export { SignerDetailsPanel } from './components/signer-details-panel'
 export { SignaturePreview } from './components/signature-preview'
 export { SignaturePad } from './components/signature-pad'
 export { SigningComplete } from './components/signing-complete'
+export { CustomFieldInputs } from './components/custom-field-inputs'
+export { CustomFieldsPanel } from './components/custom-fields-panel'
 
 export { usePdfDocument } from './hooks/use-pdf-document'
 export { usePdfPageVisibility } from './hooks/use-pdf-page-visibility'

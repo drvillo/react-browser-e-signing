@@ -12,6 +12,7 @@ interface AddFieldInput {
   type: FieldType
   xPercent: number
   yPercent: number
+  label?: string
 }
 
 function clampPercent(value: number): number {
@@ -35,7 +36,7 @@ export function useFieldPlacement(options: UseFieldPlacementOptions = {}) {
   const [fields, setFields] = useState<FieldPlacement[]>(options.initialFields ?? [])
 
   const addField = useCallback(
-    ({ pageIndex, type, xPercent, yPercent }: AddFieldInput) => {
+    ({ pageIndex, type, xPercent, yPercent, label }: AddFieldInput) => {
       const field: FieldPlacement = {
         id: buildFieldId(),
         pageIndex,
@@ -44,12 +45,23 @@ export function useFieldPlacement(options: UseFieldPlacementOptions = {}) {
         yPercent: clampPercent(yPercent),
         widthPercent: clampPercent(defaultWidthPercent),
         heightPercent: clampPercent(defaultHeightPercent),
+        ...(label !== undefined && { label }),
       }
       setFields((previousFields) => [...previousFields, field])
       return field
     },
     [defaultHeightPercent, defaultWidthPercent]
   )
+
+  const appendFields = useCallback((nextFields: FieldPlacement[]) => {
+    if (!nextFields.length) return
+    setFields((previousFields) => {
+      const existingIds = new Set(previousFields.map((field) => field.id))
+      const uniqueNextFields = nextFields.filter((field) => !existingIds.has(field.id))
+      if (!uniqueNextFields.length) return previousFields
+      return [...previousFields, ...uniqueNextFields]
+    })
+  }, [])
 
   const updateField = useCallback((id: string, partial: Partial<FieldPlacement>) => {
     setFields((previousFields) =>
@@ -80,11 +92,12 @@ export function useFieldPlacement(options: UseFieldPlacementOptions = {}) {
   const fieldActions = useMemo(
     () => ({
       addField,
+      appendFields,
       updateField,
       removeField,
       clearFields,
     }),
-    [addField, clearFields, removeField, updateField]
+    [addField, appendFields, clearFields, removeField, updateField]
   )
 
   return {
