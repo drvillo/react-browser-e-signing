@@ -1,16 +1,21 @@
 import React from 'react'
-import { render, waitFor } from '@testing-library/react'
+import { cleanup, render, waitFor } from '@testing-library/react'
 import { page } from 'vitest/browser'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../../demo/App'
 import { createSyntheticContractPdf } from '../fixtures/synthetic-contract'
 import { getPageXObjectCount } from '../helpers/pdf-helpers'
+
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
 
 async function uploadContractPdf(): Promise<void> {
   const { fileName, pdfBytes } = await createSyntheticContractPdf()
   const normalizedPdfBytes = Uint8Array.from(pdfBytes)
   const file = new File([normalizedPdfBytes], fileName, { type: 'application/pdf' })
-  await page.getByLabelText('Upload PDF').upload(file)
+  await page.getByLabelText('Upload PDF').first().upload(file)
 }
 
 describe('browser signing flow', () => {

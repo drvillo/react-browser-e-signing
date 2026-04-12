@@ -14,18 +14,23 @@ export function CustomFieldInputs({ labels, values, onValuesChange, className }:
     onValuesChange({ ...values, [label]: value })
   }
 
+  function toInputId(label: string): string {
+    const normalized = label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+    return normalized ? `custom-field-${normalized}` : 'custom-field'
+  }
+
   const uniqueLabels = [...new Set(labels)]
 
   return (
     <div data-slot="custom-field-inputs" className={cn(className)}>
       {uniqueLabels.map((label) => (
         <div key={label} data-slot="custom-field-inputs-field">
-          <label data-slot="custom-field-inputs-label" htmlFor={`custom-field-${label}`}>
+          <label data-slot="custom-field-inputs-label" htmlFor={toInputId(label)}>
             {label}
           </label>
           <input
             data-slot="custom-field-inputs-input"
-            id={`custom-field-${label}`}
+            id={toInputId(label)}
             type="text"
             value={values[label] ?? ''}
             onChange={(event) => handleChange(label, event.target.value)}

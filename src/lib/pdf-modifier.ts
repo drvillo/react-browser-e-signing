@@ -51,6 +51,7 @@ export async function modifyPdf({
     if (!page || !pageDimension) continue
 
     const pointRect = mapToPoints(field, pageDimension)
+
     if (field.type === 'signature' && signatureImage) {
       page.drawImage(signatureImage, {
         x: pointRect.x,
@@ -62,14 +63,14 @@ export async function modifyPdf({
     }
 
     if (field.type === 'custom') {
+      const pad = 2
       page.drawRectangle({
-        x: pointRect.x,
-        y: pointRect.y,
-        width: pointRect.width,
-        height: pointRect.height,
+        x: pointRect.x - pad,
+        y: pointRect.y - pad,
+        width: pointRect.width + pad * 2,
+        height: pointRect.height + pad * 2,
         color: rgb(1, 1, 1),
       })
-
       const customValue = field.label ? signer.customFields?.[field.label] ?? '' : ''
       if (customValue) {
         const textSize = Math.max(9, Math.min(16, pointRect.height * 0.6))

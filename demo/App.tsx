@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { getPdfWorkerSrc } from '../worker/index.mjs'
 import {
   configure,
-  CustomFieldInputs,
+  CustomFieldsPanel,
   FieldOverlay,
   FieldPalette,
   PdfPageNavigator,
@@ -14,7 +14,6 @@ import {
   defaults,
   modifyPdf,
   sha256,
-  useAnchorTags,
   useFieldPlacement,
   usePdfDocument,
   usePdfPageVisibility,
@@ -55,7 +54,6 @@ const TEMPLATE_FIELDS: FieldPlacement[] = [
     yPercent: 70,
     widthPercent: 35,
     heightPercent: 8,
-    locked: true,
   },
   {
     id: 'template-name',
@@ -65,7 +63,6 @@ const TEMPLATE_FIELDS: FieldPlacement[] = [
     yPercent: 82,
     widthPercent: 30,
     heightPercent: 5,
-    locked: true,
   },
   {
     id: 'template-date',
@@ -75,7 +72,6 @@ const TEMPLATE_FIELDS: FieldPlacement[] = [
     yPercent: 82,
     widthPercent: 20,
     heightPercent: 5,
-    locked: true,
   },
 ]
 
@@ -97,8 +93,6 @@ function todayDateText(): string {
 
 interface SigningAreaProps {
   initialFields?: FieldPlacement[]
-  anchorFields?: FieldPlacement[]
-  isScanning?: boolean
   onPdfClear: () => void
   pdfInput: File | null
   pdfData: ArrayBuffer | null
@@ -120,8 +114,6 @@ interface SigningAreaProps {
 
 function SigningArea({
   initialFields,
-  anchorFields,
-  isScanning,
   onPdfClear,
   pdfInput,
   pdfData,
@@ -154,22 +146,11 @@ function SigningArea({
   const [singlePageIndex, setSinglePageIndex] = useState(0)
   const viewerContainerRef = useRef<HTMLDivElement | null>(null)
 
-  const mergedInitialFields = useMemo(() => {
-    const base = initialFields ?? []
-    const anchor = anchorFields ?? []
-    return [...base, ...anchor]
-  }, [initialFields, anchorFields])
-
   const { fields, addField, updateField, removeField, clearFields } = useFieldPlacement({
     defaultWidthPercent: defaults.DEFAULT_FIELD_WIDTH_PERCENT,
     defaultHeightPercent: defaults.DEFAULT_FIELD_HEIGHT_PERCENT,
-    initialFields: mergedInitialFields,
+    initialFields,
   })
-
-  const customFieldLabels = useMemo(
-    () => fields.filter((f) => f.type === 'custom' && f.label).map((f) => f.label!),
-    [fields]
-  )
 
   const signerWithCustomFields = useMemo<SignerInfo>(
     () => ({ ...signerInfo, customFields: customFieldValues }),
@@ -333,19 +314,6 @@ function SigningArea({
     scrollToPage(pageIndex)
   }
 
-  function handleNextCustomField(): void {
-    const unfilledFields = fields.filter(
-      (f) => f.type === 'custom' && f.label && !customFieldValues[f.label]
-    )
-    if (unfilledFields.length === 0) return
-    const target = unfilledFields[0]
-    if (isSinglePageMode) {
-      setSinglePageIndex(target.pageIndex)
-    } else {
-      scrollToPage(target.pageIndex)
-    }
-  }
-
   return (
     <>
       {showVisibilityReadout ? (
@@ -409,6 +377,15 @@ function SigningArea({
                   onAddField={handleAddField}
                   onUpdateField={updateField}
                   onRemoveField={removeField}
+                  onUpdateCustomValue={(label, value) =>
+                    setCustomFieldValues((prev) => ({ ...prev, [label]: value }))
+                  }
+                  onCustomFieldRenamed={(oldLabel, newLabel) =>
+                    setCustomFieldValues((prev) => {
+                      const { [oldLabel]: value, ...rest } = prev
+                      return { ...rest, [newLabel]: value ?? '' }
+                    })
+                  }
                   preview={fieldPreview}
                 />
               )}
@@ -419,28 +396,15 @@ function SigningArea({
         <aside className={`space-y-4 ${showStickySidebar ? 'lg:sticky lg:top-6 lg:self-start' : ''}`}>
           <SignerDetailsPanel signerInfo={signerInfo} onSignerInfoChange={setSignerInfo} />
 
-          {customFieldLabels.length > 0 ? (
-            <div data-demo-slot="custom-fields-card" className="rounded-lg border border-slate-300 bg-white p-4 space-y-3">
-              <h3 className="text-sm font-semibold text-slate-900">Custom Fields</h3>
-              {isScanning ? (
-                <p className="text-xs text-slate-500">Scanning for anchor tags...</p>
-              ) : null}
-              <CustomFieldInputs
-                labels={customFieldLabels}
-                values={customFieldValues}
-                onValuesChange={setCustomFieldValues}
-                className="space-y-2 [&_label]:block [&_label]:text-xs [&_label]:font-medium [&_label]:text-slate-700 [&_input]:mt-1 [&_input]:block [&_input]:w-full [&_input]:rounded [&_input]:border [&_input]:border-slate-300 [&_input]:px-2 [&_input]:py-1 [&_input]:text-sm"
-              />
-              <button
-                type="button"
-                data-demo-slot="next-field-button"
-                className="w-full rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                onClick={handleNextCustomField}
-              >
-                Next unfilled field
-              </button>
-            </div>
-          ) : null}
+          <CustomFieldsPanel
+            fields={fields}
+            values={customFieldValues}
+            onValuesChange={setCustomFieldValues}
+            isPlacingField={selectedFieldType === 'custom'}
+            onTogglePlacing={() =>
+              setSelectedFieldType(selectedFieldType === 'custom' ? null : 'custom')
+            }
+          />
 
           <SignaturePreview
             signerName={displayName}
@@ -495,8 +459,6 @@ export function App() {
     errorMessage: documentErrorMessage,
   } = usePdfDocument(pdfInput)
 
-  const { fields: anchorFields, isScanning: isAnchorScanning } = useAnchorTags(pdfData)
-
   useEffect(() => {
     const linkId = 'esig-theme-link'
     let linkElement = document.getElementById(linkId) as HTMLLinkElement | null
@@ -535,19 +497,35 @@ export function App() {
       </header>
 
       <div data-demo-slot="upload-card" className="rounded-lg border border-slate-300 bg-white p-4">
-        <label data-demo-slot="upload-label" className="block text-sm font-medium text-slate-700">
-          Upload PDF
-          <input
-            type="file"
-            accept="application/pdf"
-            data-demo-slot="upload-input"
-            className="mt-2 block w-full rounded border border-slate-300 p-2 text-sm"
-            onChange={(event) => {
-              const nextFile = event.target.files?.[0] ?? null
-              setPdfInput(nextFile)
-            }}
-          />
-        </label>
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <label data-demo-slot="upload-label" className="block flex-1 text-sm font-medium text-slate-700">
+            Upload PDF
+            <input
+              type="file"
+              accept="application/pdf"
+              data-demo-slot="upload-input"
+              className="mt-2 block w-full rounded border border-slate-300 p-2 text-sm"
+              onChange={(event) => {
+                const nextFile = event.target.files?.[0] ?? null
+                setPdfInput(nextFile)
+              }}
+            />
+          </label>
+
+          <button
+            type="button"
+            data-demo-slot="template-mode-button"
+            aria-pressed={templateMode}
+            className={`rounded px-3 py-2 text-sm font-medium transition-colors ${
+              templateMode
+                ? 'border border-blue-700 bg-blue-700 text-white hover:bg-blue-800'
+                : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+            }`}
+            onClick={() => setTemplateMode((previousValue) => !previousValue)}
+          >
+            {templateMode ? 'Template Mode: On' : 'Template Mode: Off'}
+          </button>
+        </div>
       </div>
 
       <section data-demo-slot="controls-panel" className="rounded-lg border border-slate-300 bg-white p-4">
@@ -648,21 +626,6 @@ export function App() {
             </span>
           </label>
 
-          <label className="flex items-start gap-2 rounded border border-slate-200 p-3">
-            <input
-              type="checkbox"
-              checked={templateMode}
-              onChange={(event) => setTemplateMode(event.target.checked)}
-            />
-            <span className="grid gap-1">
-              <span className="text-xs font-medium text-slate-700">Template mode (locked fields)</span>
-              <span className="text-xs text-slate-500">
-                Pre-positions locked signature, name, and date on page 1 (lower area; scroll if needed). Upload before
-                or after enabling—fields persist. Toggles remount.
-              </span>
-            </span>
-          </label>
-
           <label className="grid gap-1 rounded border border-slate-200 p-3">
             <span className="text-xs font-medium text-slate-700">Visibility threshold</span>
             <select
@@ -679,10 +642,8 @@ export function App() {
       </section>
 
       <SigningArea
-        key={`${templateMode}-${anchorFields.length}`}
+        key={String(templateMode)}
         initialFields={templateMode ? TEMPLATE_FIELDS : undefined}
-        anchorFields={anchorFields}
-        isScanning={isAnchorScanning}
         onPdfClear={() => setPdfInput(null)}
         pdfInput={pdfInput}
         pdfData={pdfData}

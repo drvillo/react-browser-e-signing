@@ -1,5 +1,12 @@
 export type FieldType = 'signature' | 'fullName' | 'title' | 'date' | 'custom'
 
+export interface FieldPercentRect {
+  xPercent: number
+  yPercent: number
+  widthPercent: number
+  heightPercent: number
+}
+
 export interface FieldPlacement {
   id: string
   type: FieldType
@@ -8,7 +15,6 @@ export interface FieldPlacement {
   yPercent: number
   widthPercent: number
   heightPercent: number
-  locked?: boolean
   label?: string
 }
 

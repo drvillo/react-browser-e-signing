@@ -202,7 +202,7 @@ describe('modifyPdf custom fields', () => {
     expect(await extractPageText(outputBytes, 0)).toContain('Acme Corp')
   })
 
-  it('draws white rectangle to erase anchor tag text', async () => {
+  it('draws white background rectangle for custom field', async () => {
     const sourceBytes = await createSourcePdf()
     const outputBytes = await modifyPdf({
       pdfBytes: sourceBytes,
