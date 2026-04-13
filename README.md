@@ -31,6 +31,8 @@ pnpm install
 pnpm demo
 ```
 
+The demo imports the package from `src/` (not `dist/`). `pnpm demo` runs `sync-fonts-to-src.mjs`, which copies the bundled `.woff2` files into `src/lib/fonts/` (gitignored) so `loadSignatureFont` can resolve them next to `signature-fonts.ts` during Vite dev.
+
 ## Public API
 
 ### Components
@@ -61,7 +63,7 @@ pnpm demo
 
 ### Configuration
 
-- `configure(options)` — PDF worker URL, signature font mode (`network` | `local-only`), optional `fontUrlResolver`, optional `onWarning` callback
+- `configure(options)` — PDF worker URL, signature font mode (`bundled` | `local-only`; deprecated `network`), optional `fontUrlResolver`, optional `onWarning` callback
 - `getPdfWorkerSrc()` — from `@drvillo/react-browser-e-signing/worker`; returns a bundler-resolved URL for the packaged `pdf.worker.min.mjs` (recommended default for `pdfWorkerSrc`)
 - Types: `ESigningConfig`, `SignatureFontWarning`
 
@@ -137,7 +139,7 @@ After a fresh clone, run **`pnpm build` once** so `dist/` includes the bundled w
 
 ## Production hardening
 
-Runtime calls to external CDNs (PDF.js worker, Google Fonts) often fail in real apps: **CSP** (`worker-src`, `connect-src`, `font-src`), ad blockers, corporate proxies, or offline users. They also add noisy console errors (`Failed to fetch`) even when the rest of the UI works. This library defaults to **no injected worker URL** and lets you control loading explicitly.
+Runtime calls to external CDNs (e.g. PDF.js worker) often fail in real apps: **CSP** (`worker-src`, `connect-src`), ad blockers, corporate proxies, or offline users. This library defaults to **no injected worker URL** and lets you control loading explicitly. Typed signature fonts are **bundled** in the package (no Google Fonts fetch).
 
 ### Bundled PDF.js worker (recommended)
 
@@ -192,17 +194,21 @@ import { configure } from '@drvillo/react-browser-e-signing'
 configure({ pdfWorkerSrc: '/pdf.worker.min.mjs' })
 ```
 
-### Typed signatures: local-only fonts (no network)
+### Typed signatures: bundled fonts (default)
 
-Skip all font fetches (handwriting fonts won’t load from Google; the browser uses whatever faces are already available, with sensible fallback):
+Latin **woff2** files for the built-in signature typefaces are **shipped in the package** under `dist/fonts/` (sourced from `@fontsource/*` at build time). `loadSignatureFont` registers them via the FontFace API — **no runtime fetch to Google Fonts**.
+
+### Typed signatures: local-only fonts
+
+Skip registering bundled fonts; the browser uses whatever faces are already installed or available (fallback may look generic):
 
 ```tsx
 configure({ fontMode: 'local-only' })
 ```
 
-Default is `fontMode: 'network'`, which keeps the previous Google Fonts behavior but **does not throw** on failure; failures are reported via `onWarning` when set.
+Load failures are reported via `onWarning` when set; rendering still produces a PNG using fallback glyphs when a face is missing.
 
-### Custom font URLs (self-hosted woff/woff2)
+### Custom font URLs (override or self-hosted woff/woff2)
 
 ```tsx
 configure({
@@ -210,7 +216,7 @@ configure({
 })
 ```
 
-Return `null` to fall back to Google Fonts for that family (when `fontMode` is `'network'`).
+Return `null` to use the **bundled** woff2 for that family (when not using `local-only`).
 
 ### Observability
 
@@ -232,14 +238,14 @@ If everything is same-origin (including the worker URL after your bundler emits 
 Content-Security-Policy: worker-src 'self'; script-src 'self'; connect-src 'self'; font-src 'self';
 ```
 
-A self-hosted worker loaded from the same origin as your app typically satisfies `worker-src 'self'`. Adjust `connect-src` / `font-src` if you still use Google Fonts or load scripts from elsewhere.
+A self-hosted worker loaded from the same origin as your app typically satisfies `worker-src 'self'`. Typed signature fonts load from the same origin as your app bundle (package `dist/fonts/*.woff2`); allow `font-src 'self'` (or your asset origin).
 
 ### Migration from v0.1.2 and earlier
 
-Previously, `PdfViewer` set the worker to unpkg at module load, and typed fonts fetched Google Fonts CSS + files at runtime.
+Previously, `PdfViewer` set the worker to unpkg at module load, and typed fonts fetched Google Fonts at runtime.
 
 - **Worker:** to restore the old CDN behavior (not recommended for production), set `pdfWorkerSrc` to the unpkg URL for your PDF.js version, e.g. `https://unpkg.com/pdfjs-dist@<version>/build/pdf.worker.min.mjs` (match `pdfjs.version` from `react-pdf` / `pdfjs-dist`).
-- **Fonts:** behavior is unchanged when you omit `configure()` except that network failures no longer surface as thrown errors from `loadSignatureFont`; use `fontMode: 'local-only'` for strict no-network deployments.
+- **Fonts:** default is bundled Latin woff2 files (no Google fetch). Use `fontMode: 'local-only'` when you must not register `@font-face` from the package.
 
 ## Limitations
 

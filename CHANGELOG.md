@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.1
+
+### Changed
+
+- **Typed signature fonts:** Latin **woff2** files for `SIGNATURE_FONTS` are **bundled** in the published package (`dist/fonts/`, copied from devDependency `@fontsource/*` at build). `loadSignatureFont` no longer fetches Google Fonts at runtime. `fontMode` defaults to bundled behavior; use `'local-only'` to skip registering those faces. The value `'network'` is deprecated and treated like `'bundled'`.
+- **`fontUrlResolver`:** returning `null` falls back to the **bundled** file for that family (not Google Fonts).
+
+### Added
+
+- Package export `./fonts/*` pointing at `dist/fonts/*` for advanced bundler setups.
+- **`scripts/sync-fonts-to-src.mjs`:** copies the same woff2 files into `src/lib/fonts/` (gitignored). `pnpm demo` / `pnpm demo:build` run this before Vite so the demo — which imports from `src/` — resolves `./fonts/*.woff2` next to `signature-fonts.ts` via `import.meta.url`.
+
+### Fixed
+
+- **Demo:** typed signature font selection had no effect when font files were missing beside `signature-fonts.ts` during dev (all faces fell back identically).
+
 ## 0.3.0
 
 ### Added

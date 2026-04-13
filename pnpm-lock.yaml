@@ -21,6 +21,24 @@ importers:
         specifier: ^5.0.0
         version: 5.1.3
     devDependencies:
+      '@fontsource/caveat':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/homemade-apple':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/mr-dafoe':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/pacifico':
+        specifier: ^5.2.7
+        version: 5.2.7
+      '@fontsource/qwitcher-grypen':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/reenie-beanie':
+        specifier: ^5.2.8
+        version: 5.2.8
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@7.3.1(@types/node@24.12.0)(jiti@2.6.1)(lightningcss@1.32.0))
@@ -320,6 +338,24 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@fontsource/caveat@5.2.8':
+    resolution: {integrity: sha512-9fUUfFE2IQFKbx+xOcaeQxxmh8iJguEb8z+j1PeueO4UUx+XfT4pRm/B04ZDvFA794/iRxY/IibmP8ZKtIf4rw==}
+
+  '@fontsource/homemade-apple@5.2.8':
+    resolution: {integrity: sha512-xFLXqk+q16Xt2UReeuWfKxdl2HawXJJyRMrsh6w3LZbKwpKcM0M5Nwi+npsDC3fzZQECSLzRnR+IECQqTWXfCA==}
+
+  '@fontsource/mr-dafoe@5.2.8':
+    resolution: {integrity: sha512-mPMn/K1hBOf21vwpdDtmmqd/yFz/7uxvEU0igv106+5HaxnP3lkhp5OJrbHi5WPfF4yk5EcdpP6GItPfabsyDg==}
+
+  '@fontsource/pacifico@5.2.7':
+    resolution: {integrity: sha512-L+YiZn3Lb8rVN15zcLlti62doVxQeFpS+dJmulKkFrUo3dZIAxZLHwXoKaaHm+VVcOTrT/mmKCZqGOIWVmFV2w==}
+
+  '@fontsource/qwitcher-grypen@5.2.8':
+    resolution: {integrity: sha512-DTbkJPrJLf8jXNtKKcbRhgeH6r61xYCa1Nq8Br9Qs9Y5xR7LVUHWOWxk7K/LMHjJlGhRD25pM5bp9uVSFcbvvA==}
+
+  '@fontsource/reenie-beanie@5.2.8':
+    resolution: {integrity: sha512-fDPSpU64a8rVtu5NKRogzKx/fukotfpcet8gFDzHYctRX3xIZ8MCbCGGS4XxJuwhSuhRJX59Ur0eU0QpBQpTZg==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -1664,6 +1700,18 @@ snapshots:
 
   '@esbuild/win32-x64@0.27.4':
     optional: true
+
+  '@fontsource/caveat@5.2.8': {}
+
+  '@fontsource/homemade-apple@5.2.8': {}
+
+  '@fontsource/mr-dafoe@5.2.8': {}
+
+  '@fontsource/pacifico@5.2.7': {}
+
+  '@fontsource/qwitcher-grypen@5.2.8': {}
+
+  '@fontsource/reenie-beanie@5.2.8': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:

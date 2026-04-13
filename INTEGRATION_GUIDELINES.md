@@ -10,6 +10,7 @@
   - import `configure` from package
   - import `getPdfWorkerSrc` from `@drvillo/react-browser-e-signing/worker`
   - call `configure({ pdfWorkerSrc: getPdfWorkerSrc() })`
+- bundledSignatureFonts: six Latin `woff2` files under `dist/fonts/` (from devDependency `@fontsource/*` at publish build). Optional import path `@drvillo/react-browser-e-signing/fonts/<file>.woff2`. Default `fontMode` loads these via `FontFace` (no Google Fonts request).
 
 ## 2) Full Public API
 
@@ -238,7 +239,7 @@ interface SignatureFieldPreview {
 ```ts
 function configure(options: {
   pdfWorkerSrc?: string
-  fontMode?: 'network' | 'local-only'
+  fontMode?: 'bundled' | 'local-only' | 'network'
   fontUrlResolver?: (fontFamily: string) => string | null
   onWarning?: (warning: { code: string; message: string }) => void
 }): void

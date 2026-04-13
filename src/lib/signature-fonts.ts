@@ -11,21 +11,27 @@ export const SIGNATURE_FONTS = [
   'Qwitcher Grypen',
 ] as const
 
-function buildGoogleFontsCssUrl(family: string): string {
-  const encoded = family.trim().replace(/\s+/g, '+')
-  return `https://fonts.googleapis.com/css2?family=${encoded}&display=swap`
+/** Latin-400 woff2 shipped under `dist/fonts/` (copied from @fontsource at build time). */
+const BUNDLED_FONT_FILES: Record<(typeof SIGNATURE_FONTS)[number], string> = {
+  Caveat: 'caveat.woff2',
+  'Homemade Apple': 'homemade-apple.woff2',
+  'Reenie Beanie': 'reenie-beanie.woff2',
+  'Mr Dafoe': 'mr-dafoe.woff2',
+  Pacifico: 'pacifico.woff2',
+  'Qwitcher Grypen': 'qwitcher-grypen.woff2',
 }
 
-async function loadCssFromGoogleFonts(url: string): Promise<string> {
-  const response = await fetch(url)
-  if (!response.ok) throw new Error(`Unable to load font css from ${url}`)
-  return response.text()
+function resolveFontMode(
+  mode: ReturnType<typeof getConfig>['fontMode'],
+): 'bundled' | 'local-only' {
+  if (mode === 'local-only') return 'local-only'
+  return 'bundled'
 }
 
-function extractFontSource(cssText: string): string | null {
-  const sourceMatch = cssText.match(/src:\s*url\(([^)]+)\)\s*format\(['"]?([^'")]+)['"]?\)/i)
-  if (!sourceMatch) return null
-  return sourceMatch[1].replace(/['"]/g, '')
+function getBundledFontUrl(fontFamily: string): string | null {
+  if (!(fontFamily in BUNDLED_FONT_FILES)) return null
+  const file = BUNDLED_FONT_FILES[fontFamily as keyof typeof BUNDLED_FONT_FILES]
+  return new URL(`./fonts/${file}`, import.meta.url).href
 }
 
 function warnFontLoad(message: string): void {
@@ -49,37 +55,43 @@ export async function loadSignatureFont(fontFamily: string): Promise<void> {
   if (typeof document === 'undefined') return
   if (typeof FontFace === 'undefined') return
 
-  const { fontMode = 'network', fontUrlResolver } = getConfig()
+  const { fontMode, fontUrlResolver } = getConfig()
+  const resolvedMode = resolveFontMode(fontMode)
 
-  if (fontMode === 'local-only') {
+  if (resolvedMode === 'local-only') {
     loadedFonts.add(fontFamily)
     return
   }
 
-  const tryLoadFromGoogle = async (): Promise<void> => {
-    try {
-      const cssUrl = buildGoogleFontsCssUrl(fontFamily)
-      const cssText = await loadCssFromGoogleFonts(cssUrl)
-      const fontSource = extractFontSource(cssText)
-      if (!fontSource) throw new Error(`Unable to extract font source for ${fontFamily}`)
-      await loadFontFaceFromUrl(fontFamily, fontSource)
-    } catch (error: unknown) {
-      const detail = error instanceof Error ? error.message : String(error)
-      warnFontLoad(`Google Fonts load failed for "${fontFamily}": ${detail}`)
-    }
+  const tryLoadBundled = async (): Promise<void> => {
+    const url = getBundledFontUrl(fontFamily)
+    if (!url) throw new Error(`No bundled font for "${fontFamily}"`)
+    await loadFontFaceFromUrl(fontFamily, url)
   }
 
   if (fontUrlResolver) {
     try {
       const resolved = fontUrlResolver(fontFamily)
       if (resolved) await loadFontFaceFromUrl(fontFamily, resolved)
-      else await tryLoadFromGoogle()
+      else await tryLoadBundled()
     } catch (error: unknown) {
       const detail = error instanceof Error ? error.message : String(error)
       warnFontLoad(`Custom font load failed for "${fontFamily}": ${detail}`)
-      await tryLoadFromGoogle()
+      try {
+        await tryLoadBundled()
+      } catch (bundledError: unknown) {
+        const bundledDetail = bundledError instanceof Error ? bundledError.message : String(bundledError)
+        warnFontLoad(`Bundled font load failed for "${fontFamily}": ${bundledDetail}`)
+      }
     }
-  } else await tryLoadFromGoogle()
+  } else {
+    try {
+      await tryLoadBundled()
+    } catch (error: unknown) {
+      const detail = error instanceof Error ? error.message : String(error)
+      warnFontLoad(`Bundled font load failed for "${fontFamily}": ${detail}`)
+    }
+  }
 
   loadedFonts.add(fontFamily)
 }
@@ -87,8 +99,4 @@ export async function loadSignatureFont(fontFamily: string): Promise<void> {
 /** @internal Clears loaded-font bookkeeping (for unit tests). */
 export function resetSignatureFontCache(): void {
   loadedFonts.clear()
-}
-
-export function buildSignatureFontCssUrl(fontFamily: string): string {
-  return buildGoogleFontsCssUrl(fontFamily)
 }

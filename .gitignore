@@ -1,5 +1,8 @@
 node_modules
 
+# Copied from @fontsource for dev/demo when importing library source (import.meta.url → src/lib/fonts/)
+src/lib/fonts/*.woff2
+
 dist
 dist-demo
 output

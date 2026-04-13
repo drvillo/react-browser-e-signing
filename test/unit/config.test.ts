@@ -14,9 +14,9 @@ describe('configure', () => {
 
   it('merges subsequent configure calls', () => {
     configure({ pdfWorkerSrc: '/a.mjs' })
-    configure({ fontMode: 'network' })
+    configure({ fontMode: 'bundled' })
     expect(getConfig().pdfWorkerSrc).toBe('/a.mjs')
-    expect(getConfig().fontMode).toBe('network')
+    expect(getConfig().fontMode).toBe('bundled')
   })
 
   it('resetConfig clears state', () => {
