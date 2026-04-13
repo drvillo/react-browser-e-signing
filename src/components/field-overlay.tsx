@@ -10,9 +10,9 @@ interface FieldOverlayProps {
   onAddField: (input: { pageIndex: number; type: FieldType; xPercent: number; yPercent: number }) => void
   onUpdateField: (fieldId: string, partial: Partial<FieldPlacement>) => void
   onRemoveField: (fieldId: string) => void
-  onUpdateCustomValue?: (label: string, value: string) => void
-  onCustomFieldRenamed?: (oldLabel: string, newLabel: string) => void
   preview: SignatureFieldPreview
+  /** When true, clicking the overlay does not add new fields. */
+  readOnly?: boolean
   className?: string
 }
 
@@ -23,12 +23,12 @@ export function FieldOverlay({
   onAddField,
   onUpdateField,
   onRemoveField,
-  onUpdateCustomValue,
-  onCustomFieldRenamed,
   preview,
+  readOnly = false,
   className,
 }: FieldOverlayProps) {
   function handleOverlayPointerDown(event: PointerEvent<HTMLDivElement>): void {
+    if (readOnly) return
     if (!selectedFieldType) return
     if (event.button !== 0) return
     if (event.target !== event.currentTarget) return
@@ -45,16 +45,18 @@ export function FieldOverlay({
 
   const pageFields = fields.filter((field) => field.pageIndex === pageIndex)
 
+  const overlayState = readOnly ? 'readonly' : selectedFieldType ? 'placing' : 'idle'
+
   return (
     <div
       data-slot="field-overlay"
-      data-state={selectedFieldType ? 'placing' : 'idle'}
+      data-state={overlayState}
       className={cn(className)}
       style={{
         position: 'absolute',
         inset: 0,
         zIndex: 20,
-        cursor: selectedFieldType ? 'crosshair' : 'default',
+        cursor: readOnly ? 'default' : selectedFieldType ? 'crosshair' : 'default',
       }}
       onPointerDown={handleOverlayPointerDown}
       aria-label={`Field overlay page ${pageIndex + 1}`}
@@ -65,8 +67,6 @@ export function FieldOverlay({
           field={field}
           onUpdateField={onUpdateField}
           onRemoveField={onRemoveField}
-          onUpdateCustomValue={onUpdateCustomValue}
-          onCustomFieldRenamed={onCustomFieldRenamed}
           preview={preview}
         />
       ))}

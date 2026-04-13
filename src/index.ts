@@ -12,8 +12,6 @@ export { SignerDetailsPanel } from './components/signer-details-panel'
 export { SignaturePreview } from './components/signature-preview'
 export { SignaturePad } from './components/signature-pad'
 export { SigningComplete } from './components/signing-complete'
-export { CustomFieldInputs } from './components/custom-field-inputs'
-export { CustomFieldsPanel } from './components/custom-fields-panel'
 
 export { usePdfDocument } from './hooks/use-pdf-document'
 export { usePdfPageVisibility } from './hooks/use-pdf-page-visibility'
@@ -23,6 +21,7 @@ export { useSignatureRenderer } from './hooks/use-signature-renderer'
 export type { UsePdfPageVisibilityOptions, UsePdfPageVisibilityReturn } from './hooks/use-pdf-page-visibility'
 
 export { modifyPdf } from './lib/pdf-modifier'
+export type { ModifyPdfInput } from './lib/pdf-modifier'
 export { mapToPoints, mapFromPoints } from './lib/coordinate-mapper'
 export { loadSignatureFont, SIGNATURE_FONTS }
 export { sha256 } from './lib/hash'

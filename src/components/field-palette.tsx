@@ -13,10 +13,10 @@ const FIELD_LABELS: Record<FieldType, string> = {
   fullName: 'Full Name',
   title: 'Title',
   date: 'Date',
-  custom: 'Custom',
+  text: 'Text',
 }
 
-const DEFAULT_FIELD_TYPES: FieldType[] = ['signature', 'fullName', 'title', 'date']
+const DEFAULT_FIELD_TYPES: FieldType[] = ['signature', 'fullName', 'title', 'date', 'text']
 
 export function FieldPalette({ selectedFieldType, onSelectFieldType, fieldTypes = DEFAULT_FIELD_TYPES, className }: FieldPaletteProps) {
   return (

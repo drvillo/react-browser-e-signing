@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { getPdfWorkerSrc } from '../worker/index.mjs'
 import {
   configure,
-  CustomFieldsPanel,
   FieldOverlay,
   FieldPalette,
   PdfPageNavigator,
@@ -134,7 +133,6 @@ function SigningArea({
 }: SigningAreaProps) {
   const [selectedFieldType, setSelectedFieldType] = useState<FieldType | null>(null)
   const [signerInfo, setSignerInfo] = useState<SignerInfo>(createDefaultSigner())
-  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({})
   const [signatureStyle, setSignatureStyle] = useState<SignatureStyle>({
     mode: 'typed',
     fontFamily: defaults.SIGNATURE_FONTS[0],
@@ -146,16 +144,18 @@ function SigningArea({
   const [singlePageIndex, setSinglePageIndex] = useState(0)
   const viewerContainerRef = useRef<HTMLDivElement | null>(null)
 
-  const { fields, addField, updateField, removeField, clearFields } = useFieldPlacement({
+  const { fields, addField, updateField, removeField, clearFields, setFields } = useFieldPlacement({
     defaultWidthPercent: defaults.DEFAULT_FIELD_WIDTH_PERCENT,
     defaultHeightPercent: defaults.DEFAULT_FIELD_HEIGHT_PERCENT,
     initialFields,
   })
 
-  const signerWithCustomFields = useMemo<SignerInfo>(
-    () => ({ ...signerInfo, customFields: customFieldValues }),
-    [signerInfo, customFieldValues]
-  )
+  /** PRD: readOnly overlay = no new fields on click; locked = per-field no drag/resize/remove. */
+  const [overlayReadOnly, setOverlayReadOnly] = useState(false)
+
+  useEffect(() => {
+    if (overlayReadOnly) setSelectedFieldType(null)
+  }, [overlayReadOnly])
 
   const displayName = useMemo(() => signerDisplayName(signerInfo), [signerInfo])
   const { signatureDataUrl, isRendering } = useSignatureRenderer({
@@ -177,9 +177,8 @@ function SigningArea({
       fullName: displayName,
       title: signerInfo.title,
       dateText,
-      customFields: customFieldValues,
     }),
-    [dateText, displayName, signatureDataUrl, signerInfo.title, customFieldValues]
+    [dateText, displayName, signatureDataUrl, signerInfo.title]
   )
 
   useEffect(() => {
@@ -270,7 +269,7 @@ function SigningArea({
       const signedPdfBytes = await modifyPdf({
         pdfBytes: inputBytes,
         fields,
-        signer: signerWithCustomFields,
+        signer: signerInfo,
         signatureDataUrl,
         pageDimensions,
         dateText,
@@ -312,6 +311,22 @@ function SigningArea({
       return
     }
     scrollToPage(pageIndex)
+  }
+
+  function handleLockAllPlacements(): void {
+    setFields(fields.map((field) => ({ ...field, locked: true })))
+  }
+
+  function handleLockFieldsWithValues(): void {
+    setFields(
+      fields.map((field) =>
+        field.value != null && field.value !== '' ? { ...field, locked: true } : field
+      )
+    )
+  }
+
+  function handleUnlockAllFields(): void {
+    setFields(fields.map((field) => ({ ...field, locked: false })))
   }
 
   return (
@@ -377,16 +392,8 @@ function SigningArea({
                   onAddField={handleAddField}
                   onUpdateField={updateField}
                   onRemoveField={removeField}
-                  onUpdateCustomValue={(label, value) =>
-                    setCustomFieldValues((prev) => ({ ...prev, [label]: value }))
-                  }
-                  onCustomFieldRenamed={(oldLabel, newLabel) =>
-                    setCustomFieldValues((prev) => {
-                      const { [oldLabel]: value, ...rest } = prev
-                      return { ...rest, [newLabel]: value ?? '' }
-                    })
-                  }
                   preview={fieldPreview}
+                  readOnly={overlayReadOnly}
                 />
               )}
             />
@@ -396,15 +403,76 @@ function SigningArea({
         <aside className={`space-y-4 ${showStickySidebar ? 'lg:sticky lg:top-6 lg:self-start' : ''}`}>
           <SignerDetailsPanel signerInfo={signerInfo} onSignerInfoChange={setSignerInfo} />
 
-          <CustomFieldsPanel
-            fields={fields}
-            values={customFieldValues}
-            onValuesChange={setCustomFieldValues}
-            isPlacingField={selectedFieldType === 'custom'}
-            onTogglePlacing={() =>
-              setSelectedFieldType(selectedFieldType === 'custom' ? null : 'custom')
-            }
-          />
+          <div
+            data-demo-slot="layout-integration-card"
+            className="rounded-lg border border-slate-300 bg-white p-4 text-sm text-slate-700"
+          >
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Layout (client integration)
+            </h2>
+            <p className="mb-3 text-xs leading-relaxed text-slate-600">
+              <code className="rounded bg-slate-100 px-1">FieldOverlay readOnly</code> stops{' '}
+              <strong>adding</strong> fields on click—useful when a later user should only fill existing slots, not
+              place new ones. Per-field <code className="rounded bg-slate-100 px-1">locked</code> fixes{' '}
+              <strong>position and size</strong> (no drag, resize, or remove). Lock empty signature slots so the signer
+              cannot move them; they still sign via your app (e.g. preview panel →{' '}
+              <code className="rounded bg-slate-100 px-0.5">modifyPdf</code>). Text fields can still be filled/edited
+              inline when locked. Combine <code className="rounded bg-slate-100 px-0.5">readOnly</code> + all{' '}
+              <code className="rounded bg-slate-100 px-0.5">locked</code> for a fully fixed layout.
+            </p>
+            <label className="flex cursor-pointer items-start gap-2 border-b border-slate-100 pb-3">
+              <input
+                type="checkbox"
+                checked={overlayReadOnly}
+                onChange={(event) => setOverlayReadOnly(event.target.checked)}
+                data-demo-slot="overlay-readonly-toggle"
+              />
+              <span className="grid gap-0.5">
+                <span className="font-medium text-slate-800">Read-only overlay</span>
+                <span className="text-xs text-slate-500">
+                  No new placements on the PDF (palette selection is cleared). Existing fields still render.
+                </span>
+              </span>
+            </label>
+            <div className="mt-3 flex flex-col gap-2">
+              <button
+                type="button"
+                data-demo-slot="lock-all-placements"
+                className="rounded border border-slate-300 bg-slate-50 px-3 py-2 text-left text-xs font-medium text-slate-800 hover:bg-slate-100"
+                onClick={handleLockAllPlacements}
+                disabled={!fields.length}
+              >
+                Lock all placements (incl. empty slots)
+              </button>
+              <p className="text-[11px] leading-relaxed text-slate-500">
+                Typical sender → signer handoff: sender places signature/text fields, then sets{' '}
+                <code className="rounded bg-slate-100 px-0.5">locked: true</code> on every field so the signer cannot
+                move boxes—empty signature fields stay put until they sign.
+              </p>
+              <button
+                type="button"
+                data-demo-slot="lock-fields-with-values"
+                className="rounded border border-slate-300 bg-white px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50"
+                onClick={handleLockFieldsWithValues}
+                disabled={!fields.length}
+              >
+                Lock only fields that already have a value
+              </button>
+              <p className="text-[11px] leading-relaxed text-slate-500">
+                Alternative: lock only prefilled rows (e.g. company name); leave empty signer fields unlocked until you
+                are ready.
+              </p>
+              <button
+                type="button"
+                data-demo-slot="unlock-all-fields"
+                className="rounded border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                onClick={handleUnlockAllFields}
+                disabled={!fields.some((f) => f.locked)}
+              >
+                Unlock all fields
+              </button>
+            </div>
+          </div>
 
           <SignaturePreview
             signerName={displayName}

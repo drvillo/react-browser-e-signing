@@ -73,7 +73,6 @@
 [data-slot='pdf-viewer-page'],
 [data-slot='field-palette'],
 [data-slot='signer-panel'],
-[data-slot='custom-fields-panel'],
 [data-slot='signature-preview'],
 [data-slot='signing-complete'],
 [data-slot='signing-complete-hash'] {
@@ -125,31 +124,10 @@
 }
 
 [data-slot='signer-panel-input'],
-[data-slot='custom-fields-panel-input'],
 [data-slot='signature-preview-font-select'] {
   background: #11111b;
   border-color: var(--esig-border);
   color: var(--esig-text);
-}
-
-[data-slot='custom-fields-panel-label'] {
-  color: var(--esig-muted);
-}
-
-[data-slot='custom-fields-panel-add-button'] {
-  background: var(--esig-surface-2);
-  border-color: var(--esig-border);
-  color: var(--esig-text);
-}
-
-[data-slot='custom-fields-panel-add-button']:hover {
-  background: #3f4057;
-}
-
-[data-slot='custom-fields-panel-add-button'][data-state='placing'] {
-  border-color: var(--esig-accent);
-  color: var(--esig-accent);
-  background: rgba(137, 180, 250, 0.1);
 }
 
 [data-slot='signature-preview-display'] {

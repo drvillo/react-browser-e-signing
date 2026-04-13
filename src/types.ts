@@ -1,4 +1,4 @@
-export type FieldType = 'signature' | 'fullName' | 'title' | 'date' | 'custom'
+export type FieldType = 'signature' | 'fullName' | 'title' | 'date' | 'text'
 
 export interface FieldPercentRect {
   xPercent: number
@@ -16,13 +16,16 @@ export interface FieldPlacement {
   widthPercent: number
   heightPercent: number
   label?: string
+  /** Pre-filled value; for `signature` type, a PNG data URL. */
+  value?: string
+  /** When true, field cannot be dragged, resized, or removed via the UI/hook. */
+  locked?: boolean
 }
 
 export interface SignerInfo {
   firstName: string
   lastName: string
   title: string
-  customFields?: Record<string, string>
 }
 
 export interface SignatureStyleTyped {
@@ -60,5 +63,4 @@ export interface SignatureFieldPreview {
   fullName: string
   title: string
   dateText: string
-  customFields?: Record<string, string>
 }

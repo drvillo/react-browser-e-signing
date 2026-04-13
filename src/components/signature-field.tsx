@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { FieldPlacement, SignatureFieldPreview } from '../types'
+import type { FieldPlacement, FieldType, SignatureFieldPreview } from '../types'
 import type { KeyboardEvent, PointerEvent } from 'react'
 import { cn } from '../lib/cn'
 
@@ -8,8 +8,6 @@ interface SignatureFieldProps {
   onUpdateField: (fieldId: string, partial: Partial<FieldPlacement>) => void
   onRemoveField: (fieldId: string) => void
   preview: SignatureFieldPreview
-  onUpdateCustomValue?: (label: string, value: string) => void
-  onCustomFieldRenamed?: (oldLabel: string, newLabel: string) => void
   className?: string
 }
 
@@ -32,6 +30,14 @@ type EditMode = 'idle' | 'label' | 'value'
 const MIN_WIDTH_PERCENT = 8
 const MIN_HEIGHT_PERCENT = 3
 
+const FIELD_LABELS: Record<FieldType, string> = {
+  signature: 'Signature',
+  fullName: 'Full Name',
+  title: 'Title',
+  date: 'Date',
+  text: 'Text',
+}
+
 function clampPercent(value: number): number {
   if (value < 0) return 0
   if (value > 100) return 100
@@ -39,10 +45,14 @@ function clampPercent(value: number): number {
 }
 
 function getFieldPreviewText(field: FieldPlacement, preview: SignatureFieldPreview): string {
+  if (field.value) {
+    if (field.type === 'signature') return ''
+    return field.value
+  }
   if (field.type === 'fullName') return preview.fullName
   if (field.type === 'title') return preview.title
   if (field.type === 'date') return preview.dateText
-  if (field.type === 'custom' && field.label) return preview.customFields?.[field.label] ?? ''
+  if (field.type === 'text') return ''
   return ''
 }
 
@@ -51,8 +61,6 @@ export function SignatureField({
   onUpdateField,
   onRemoveField,
   preview,
-  onUpdateCustomValue,
-  onCustomFieldRenamed,
   className,
 }: SignatureFieldProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)
@@ -60,13 +68,13 @@ export function SignatureField({
   const resizeStateRef = useRef<ResizeState | null>(null)
   const labelInputRef = useRef<HTMLInputElement | null>(null)
   const valueInputRef = useRef<HTMLInputElement | null>(null)
-  // Tracks intended next mode after label blur (Tab/Enter → 'value', blur/Escape → 'idle')
   const nextLabelModeRef = useRef<EditMode>('idle')
 
-  const isCustom = field.type === 'custom'
+  const isText = field.type === 'text'
+  const isLocked = field.locked === true
 
   const [editMode, setEditMode] = useState<EditMode>(
-    isCustom && !field.label ? 'label' : 'idle'
+    isText && !field.label ? 'label' : 'idle'
   )
   const [labelDraft, setLabelDraft] = useState(field.label ?? '')
   const [valueDraft, setValueDraft] = useState('')
@@ -83,7 +91,6 @@ export function SignatureField({
     return () => clearTimeout(id)
   }, [editMode])
 
-  // Sync label draft when field.label is set externally
   useEffect(() => {
     if (editMode === 'idle') setLabelDraft(field.label ?? '')
   }, [field.label, editMode])
@@ -91,7 +98,7 @@ export function SignatureField({
   function handleLabelKeyDown(e: KeyboardEvent<HTMLInputElement>): void {
     if (e.key === 'Enter' || e.key === 'Tab') {
       e.preventDefault()
-      nextLabelModeRef.current = onUpdateCustomValue ? 'value' : 'idle'
+      nextLabelModeRef.current = isText ? 'value' : 'idle'
       labelInputRef.current?.blur()
     }
     if (e.key === 'Escape') {
@@ -103,21 +110,13 @@ export function SignatureField({
 
   function handleLabelBlur(): void {
     const trimmed = labelDraft.trim()
-    if (trimmed) {
-      onUpdateField(field.id, { label: trimmed })
-      if (field.label && trimmed !== field.label) {
-        onCustomFieldRenamed?.(field.label, trimmed)
-      }
-    } else {
-      setLabelDraft(field.label ?? '')
-    }
+    if (trimmed) onUpdateField(field.id, { label: trimmed })
+    else setLabelDraft(field.label ?? '')
 
     const next = nextLabelModeRef.current
     nextLabelModeRef.current = 'idle'
 
-    if (next === 'value') {
-      setValueDraft(preview.customFields?.[trimmed || field.label || ''] ?? '')
-    }
+    if (next === 'value') setValueDraft(field.value ?? '')
     setEditMode(next)
   }
 
@@ -129,11 +128,12 @@ export function SignatureField({
   }
 
   function handleValueBlur(): void {
-    if (field.label && onUpdateCustomValue) onUpdateCustomValue(field.label, valueDraft)
+    onUpdateField(field.id, { value: valueDraft })
     setEditMode('idle')
   }
 
   function handleDragPointerDown(event: PointerEvent<HTMLDivElement>): void {
+    if (isLocked) return
     event.stopPropagation()
     if (event.button !== 0) return
     if (!rootRef.current?.parentElement) return
@@ -169,6 +169,7 @@ export function SignatureField({
   }
 
   function handleResizePointerDown(event: PointerEvent<HTMLDivElement>): void {
+    if (isLocked) return
     event.stopPropagation()
     if (event.button !== 0) return
     resizeStateRef.current = {
@@ -191,8 +192,15 @@ export function SignatureField({
     const maxWidth = 100 - field.xPercent
     const maxHeight = 100 - field.yPercent
     onUpdateField(field.id, {
-      widthPercent: clampPercent(Math.min(maxWidth, Math.max(MIN_WIDTH_PERCENT, resizeStateRef.current.startWidthPercent + deltaWidthPercent))),
-      heightPercent: clampPercent(Math.min(maxHeight, Math.max(MIN_HEIGHT_PERCENT, resizeStateRef.current.startHeightPercent + deltaHeightPercent))),
+      widthPercent: clampPercent(
+        Math.min(maxWidth, Math.max(MIN_WIDTH_PERCENT, resizeStateRef.current.startWidthPercent + deltaWidthPercent))
+      ),
+      heightPercent: clampPercent(
+        Math.min(
+          maxHeight,
+          Math.max(MIN_HEIGHT_PERCENT, resizeStateRef.current.startHeightPercent + deltaHeightPercent)
+        )
+      ),
     })
   }
 
@@ -203,13 +211,24 @@ export function SignatureField({
   }
 
   const previewText = getFieldPreviewText(field, preview)
-  const fieldLabel = isCustom && field.label ? field.label : field.type
+  const displayLabel = field.label ?? FIELD_LABELS[field.type] ?? field.type
+
+  const signaturePreviewSrc =
+    field.type === 'signature' && field.value
+      ? field.value
+      : field.type === 'signature'
+        ? preview.signatureDataUrl
+        : null
+
+  const hasValue = Boolean(field.value)
 
   return (
     <div
       ref={rootRef}
       data-slot="signature-field"
       data-field-type={field.type}
+      data-locked={isLocked ? 'true' : 'false'}
+      data-has-value={hasValue ? 'true' : 'false'}
       className={cn(className)}
       style={{
         position: 'absolute',
@@ -218,6 +237,7 @@ export function SignatureField({
         width: `${field.widthPercent}%`,
         height: `${field.heightPercent}%`,
         userSelect: 'none',
+        cursor: isLocked ? 'default' : undefined,
       }}
       onPointerDown={handleDragPointerDown}
       onPointerMove={handleDragPointerMove}
@@ -236,7 +256,7 @@ export function SignatureField({
         }}
       >
         <div data-slot="signature-field-preview">
-          {isCustom && editMode === 'label' ? (
+          {isText && editMode === 'label' ? (
             <input
               ref={labelInputRef}
               data-slot="signature-field-label-input"
@@ -250,22 +270,29 @@ export function SignatureField({
           ) : (
             <div
               data-slot="signature-field-label"
-              title={isCustom ? 'Click to rename' : undefined}
-              style={{ cursor: isCustom ? 'text' : undefined }}
-              onClick={isCustom ? () => { setLabelDraft(field.label ?? ''); setEditMode('label') } : undefined}
+              title={isText ? 'Click to rename' : undefined}
+              style={{ cursor: isText ? 'text' : undefined }}
+              onClick={
+                isText
+                  ? () => {
+                      setLabelDraft(field.label ?? '')
+                      setEditMode('label')
+                    }
+                  : undefined
+              }
             >
-              {fieldLabel}
+              {displayLabel}
             </div>
           )}
 
-          {field.type === 'signature' && preview.signatureDataUrl ? (
+          {field.type === 'signature' && signaturePreviewSrc ? (
             <img
               data-slot="signature-field-preview-image"
-              src={preview.signatureDataUrl}
+              src={signaturePreviewSrc}
               alt="signature preview"
               draggable={false}
             />
-          ) : isCustom && editMode === 'value' ? (
+          ) : isText && editMode === 'value' ? (
             <input
               ref={valueInputRef}
               data-slot="signature-field-value-input"
@@ -279,44 +306,53 @@ export function SignatureField({
           ) : (
             <div
               data-slot="signature-field-preview-text"
-              style={{ cursor: isCustom && editMode === 'idle' ? 'text' : undefined }}
-              onClick={isCustom && editMode === 'idle'
-                ? () => { setValueDraft(preview.customFields?.[field.label ?? ''] ?? ''); setEditMode('value') }
-                : undefined}
+              style={{ cursor: isText && editMode === 'idle' ? 'text' : undefined }}
+              onClick={
+                isText && editMode === 'idle'
+                  ? () => {
+                      setValueDraft(field.value ?? '')
+                      setEditMode('value')
+                    }
+                  : undefined
+              }
             >
               {previewText || '—'}
             </div>
           )}
         </div>
 
-        <button
-          type="button"
-          data-slot="signature-field-remove"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => {
-            event.stopPropagation()
-            onRemoveField(field.id)
-          }}
-          aria-label="Remove field"
-        >
-          ×
-        </button>
+        {!isLocked ? (
+          <button
+            type="button"
+            data-slot="signature-field-remove"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation()
+              onRemoveField(field.id)
+            }}
+            aria-label="Remove field"
+          >
+            ×
+          </button>
+        ) : null}
       </div>
 
-      <div
-        data-slot="signature-field-resize"
-        style={{
-          position: 'absolute',
-          right: '-0.375rem',
-          bottom: '-0.375rem',
-          width: '0.75rem',
-          height: '0.75rem',
-          cursor: 'nwse-resize',
-        }}
-        onPointerDown={handleResizePointerDown}
-        onPointerMove={handleResizePointerMove}
-        onPointerUp={handleResizePointerUp}
-      />
+      {!isLocked ? (
+        <div
+          data-slot="signature-field-resize"
+          style={{
+            position: 'absolute',
+            right: '-0.375rem',
+            bottom: '-0.375rem',
+            width: '0.75rem',
+            height: '0.75rem',
+            cursor: 'nwse-resize',
+          }}
+          onPointerDown={handleResizePointerDown}
+          onPointerMove={handleResizePointerMove}
+          onPointerUp={handleResizePointerUp}
+        />
+      ) : null}
     </div>
   )
 }

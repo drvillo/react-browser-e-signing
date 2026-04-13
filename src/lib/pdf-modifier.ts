@@ -3,11 +3,11 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { mapToPoints } from './coordinate-mapper'
 import type { FieldPlacement, PdfPageDimensions, SignerInfo } from '../types'
 
-interface ModifyPdfInput {
+export interface ModifyPdfInput {
   pdfBytes: Uint8Array
   fields: FieldPlacement[]
-  signer: SignerInfo
-  signatureDataUrl: string
+  signer?: SignerInfo
+  signatureDataUrl?: string
   pageDimensions: PdfPageDimensions[]
   dateText?: string
 }
@@ -41,8 +41,8 @@ export async function modifyPdf({
   const pages = pdfDocument.getPages()
   const helveticaFont = await pdfDocument.embedFont(StandardFonts.Helvetica)
 
-  const signatureImageBytes = signatureDataUrl ? dataUrlToBytes(signatureDataUrl) : null
-  const signatureImage = signatureImageBytes ? await pdfDocument.embedPng(signatureImageBytes) : null
+  const globalSignatureBytes = signatureDataUrl ? dataUrlToBytes(signatureDataUrl) : null
+  const globalSignatureImage = globalSignatureBytes ? await pdfDocument.embedPng(globalSignatureBytes) : null
   const resolvedDateText = dateText || new Date().toLocaleDateString()
 
   for (const field of fields) {
@@ -52,17 +52,19 @@ export async function modifyPdf({
 
     const pointRect = mapToPoints(field, pageDimension)
 
-    if (field.type === 'signature' && signatureImage) {
-      page.drawImage(signatureImage, {
-        x: pointRect.x,
-        y: pointRect.y,
-        width: pointRect.width,
-        height: pointRect.height,
-      })
-      continue
-    }
+    if (field.value) {
+      if (field.type === 'signature') {
+        const imageBytes = dataUrlToBytes(field.value)
+        const image = await pdfDocument.embedPng(imageBytes)
+        page.drawImage(image, {
+          x: pointRect.x,
+          y: pointRect.y,
+          width: pointRect.width,
+          height: pointRect.height,
+        })
+        continue
+      }
 
-    if (field.type === 'custom') {
       const pad = 2
       page.drawRectangle({
         x: pointRect.x - pad,
@@ -71,18 +73,29 @@ export async function modifyPdf({
         height: pointRect.height + pad * 2,
         color: rgb(1, 1, 1),
       })
-      const customValue = field.label ? signer.customFields?.[field.label] ?? '' : ''
-      if (customValue) {
-        const textSize = Math.max(9, Math.min(16, pointRect.height * 0.6))
-        page.drawText(customValue, {
-          x: pointRect.x + 2,
-          y: pointRect.y + Math.max(0, (pointRect.height - textSize) / 2),
-          size: textSize,
-          font: helveticaFont,
-        })
-      }
+      const textSize = Math.max(9, Math.min(16, pointRect.height * 0.6))
+      page.drawText(field.value, {
+        x: pointRect.x + 2,
+        y: pointRect.y + Math.max(0, (pointRect.height - textSize) / 2),
+        size: textSize,
+        font: helveticaFont,
+      })
       continue
     }
+
+    if (field.type === 'signature' && globalSignatureImage) {
+      page.drawImage(globalSignatureImage, {
+        x: pointRect.x,
+        y: pointRect.y,
+        width: pointRect.width,
+        height: pointRect.height,
+      })
+      continue
+    }
+
+    if (field.type === 'text') continue
+
+    if (!signer) continue
 
     const textValue =
       field.type === 'fullName'

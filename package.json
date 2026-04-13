@@ -1,6 +1,6 @@
 {
   "name": "@drvillo/react-browser-e-signing",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "React PDF e-signing in the browser — fields, handwriting, pdf-lib",
   "repository": {
     "type": "git",

@@ -33,7 +33,11 @@ function buildFieldId(): string {
 export function useFieldPlacement(options: UseFieldPlacementOptions = {}) {
   const defaultWidthPercent = options.defaultWidthPercent ?? 25
   const defaultHeightPercent = options.defaultHeightPercent ?? 5
-  const [fields, setFields] = useState<FieldPlacement[]>(options.initialFields ?? [])
+  const [fields, setFieldsState] = useState<FieldPlacement[]>(options.initialFields ?? [])
+
+  const setFields = useCallback((nextFields: FieldPlacement[]) => {
+    setFieldsState(nextFields)
+  }, [])
 
   const addField = useCallback(
     ({ pageIndex, type, xPercent, yPercent, label }: AddFieldInput) => {
@@ -47,7 +51,7 @@ export function useFieldPlacement(options: UseFieldPlacementOptions = {}) {
         heightPercent: clampPercent(defaultHeightPercent),
         ...(label !== undefined && { label }),
       }
-      setFields((previousFields) => [...previousFields, field])
+      setFieldsState((previousFields) => [...previousFields, field])
       return field
     },
     [defaultHeightPercent, defaultWidthPercent]
@@ -55,7 +59,7 @@ export function useFieldPlacement(options: UseFieldPlacementOptions = {}) {
 
   const appendFields = useCallback((nextFields: FieldPlacement[]) => {
     if (!nextFields.length) return
-    setFields((previousFields) => {
+    setFieldsState((previousFields) => {
       const existingIds = new Set(previousFields.map((field) => field.id))
       const uniqueNextFields = nextFields.filter((field) => !existingIds.has(field.id))
       if (!uniqueNextFields.length) return previousFields
@@ -64,29 +68,47 @@ export function useFieldPlacement(options: UseFieldPlacementOptions = {}) {
   }, [])
 
   const updateField = useCallback((id: string, partial: Partial<FieldPlacement>) => {
-    setFields((previousFields) =>
+    setFieldsState((previousFields) =>
       previousFields.map((field) => {
         if (field.id !== id) return field
+
+        let effectivePartial: Partial<FieldPlacement> = { ...partial }
+        if (field.locked) {
+          delete effectivePartial.xPercent
+          delete effectivePartial.yPercent
+          delete effectivePartial.widthPercent
+          delete effectivePartial.heightPercent
+        }
+        if (Object.keys(effectivePartial).length === 0) return field
+
         return {
           ...field,
-          ...partial,
-          xPercent: partial.xPercent === undefined ? field.xPercent : clampPercent(partial.xPercent),
-          yPercent: partial.yPercent === undefined ? field.yPercent : clampPercent(partial.yPercent),
+          ...effectivePartial,
+          xPercent:
+            effectivePartial.xPercent === undefined ? field.xPercent : clampPercent(effectivePartial.xPercent),
+          yPercent:
+            effectivePartial.yPercent === undefined ? field.yPercent : clampPercent(effectivePartial.yPercent),
           widthPercent:
-            partial.widthPercent === undefined ? field.widthPercent : clampPercent(partial.widthPercent),
+            effectivePartial.widthPercent === undefined
+              ? field.widthPercent
+              : clampPercent(effectivePartial.widthPercent),
           heightPercent:
-            partial.heightPercent === undefined ? field.heightPercent : clampPercent(partial.heightPercent),
+            effectivePartial.heightPercent === undefined
+              ? field.heightPercent
+              : clampPercent(effectivePartial.heightPercent),
         }
       })
     )
   }, [])
 
   const removeField = useCallback((id: string) => {
-    setFields((previousFields) => previousFields.filter((field) => field.id !== id))
+    setFieldsState((previousFields) =>
+      previousFields.filter((field) => field.id !== id || field.locked)
+    )
   }, [])
 
   const clearFields = useCallback(() => {
-    setFields([])
+    setFieldsState([])
   }, [])
 
   const fieldActions = useMemo(
@@ -96,8 +118,9 @@ export function useFieldPlacement(options: UseFieldPlacementOptions = {}) {
       updateField,
       removeField,
       clearFields,
+      setFields,
     }),
-    [addField, appendFields, clearFields, removeField, updateField]
+    [addField, appendFields, clearFields, removeField, setFields, updateField]
   )
 
   return {

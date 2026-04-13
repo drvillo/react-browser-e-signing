@@ -188,27 +188,27 @@ describe('useFieldPlacement', () => {
     expect(result.current.fields).toHaveLength(0)
   })
 
-  it('addField with type custom produces a custom field', () => {
+  it('addField with type text produces a text field', () => {
     const { result } = renderHook(() => useFieldPlacement())
 
     act(() => {
       result.current.addField({
         pageIndex: 0,
-        type: 'custom',
+        type: 'text',
         xPercent: 15,
         yPercent: 25,
       })
     })
 
     expect(result.current.fields).toHaveLength(1)
-    expect(result.current.fields[0]?.type).toBe('custom')
+    expect(result.current.fields[0]?.type).toBe('text')
   })
 
-  it('initialFields with custom type preserves label', () => {
+  it('initialFields with text type preserves label', () => {
     const initial: FieldPlacement[] = [
       {
-        id: 'custom-1',
-        type: 'custom',
+        id: 'text-1',
+        type: 'text',
         pageIndex: 0,
         xPercent: 10,
         yPercent: 20,
@@ -221,8 +221,83 @@ describe('useFieldPlacement', () => {
 
     expect(result.current.fields).toHaveLength(1)
     expect(result.current.fields[0]).toEqual(initial[0])
-    expect(result.current.fields[0]?.type).toBe('custom')
+    expect(result.current.fields[0]?.type).toBe('text')
     expect(result.current.fields[0]?.label).toBe('companyName')
+  })
+
+  it('setFields replaces the entire field array', () => {
+    const { result } = renderHook(() => useFieldPlacement())
+
+    act(() => {
+      result.current.addField({ pageIndex: 0, type: 'date', xPercent: 1, yPercent: 1 })
+    })
+    expect(result.current.fields).toHaveLength(1)
+
+    const next: FieldPlacement[] = [
+      {
+        id: 'replaced',
+        type: 'title',
+        pageIndex: 0,
+        xPercent: 5,
+        yPercent: 5,
+        widthPercent: 20,
+        heightPercent: 5,
+      },
+    ]
+    act(() => {
+      result.current.setFields(next)
+    })
+    expect(result.current.fields).toEqual(next)
+  })
+
+  it('updateField ignores positional changes when field is locked', () => {
+    const { result } = renderHook(() =>
+      useFieldPlacement({
+        initialFields: [
+          {
+            id: 'locked-1',
+            type: 'text',
+            pageIndex: 0,
+            xPercent: 10,
+            yPercent: 10,
+            widthPercent: 25,
+            heightPercent: 5,
+            locked: true,
+            label: 'x',
+          },
+        ],
+      })
+    )
+
+    act(() => {
+      result.current.updateField('locked-1', { xPercent: 99, value: 'hello' })
+    })
+    expect(result.current.fields[0]?.xPercent).toBe(10)
+    expect(result.current.fields[0]?.value).toBe('hello')
+  })
+
+  it('removeField is a no-op when field is locked', () => {
+    const { result } = renderHook(() =>
+      useFieldPlacement({
+        initialFields: [
+          {
+            id: 'locked-2',
+            type: 'signature',
+            pageIndex: 0,
+            xPercent: 10,
+            yPercent: 10,
+            widthPercent: 25,
+            heightPercent: 5,
+            locked: true,
+          },
+        ],
+      })
+    )
+
+    act(() => {
+      result.current.removeField('locked-2')
+    })
+    expect(result.current.fields).toHaveLength(1)
   })
 
   it('does not reset when initialFields option reference changes after mount', () => {
