@@ -17,6 +17,7 @@ export { usePdfDocument } from './hooks/use-pdf-document'
 export { usePdfPageVisibility } from './hooks/use-pdf-page-visibility'
 export { useFieldPlacement } from './hooks/use-field-placement'
 export { useSignatureRenderer } from './hooks/use-signature-renderer'
+export { usePdfTextLines } from './hooks/use-pdf-text-lines'
 
 export type { UsePdfPageVisibilityOptions, UsePdfPageVisibilityReturn } from './hooks/use-pdf-page-visibility'
 

@@ -191,6 +191,20 @@ interface UsePdfPageVisibilityReturn {
 function usePdfPageVisibility(options: UsePdfPageVisibilityOptions): UsePdfPageVisibilityReturn
 ```
 
+```ts
+/**
+ * Manages the per-page TextLine[] state needed for snap-to-text alignment.
+ * Pass pageDimensions from usePdfDocument.
+ * handlePageTextContent has a stable identity — safe to pass as a prop.
+ */
+function usePdfTextLines(pageDimensions: PdfPageDimensions[]): {
+  /** Map from page index to extracted text lines. Pass .get(pageIndex) to FieldOverlay. */
+  textLinesByPage: Map<number, TextLine[]>
+  /** Stable callback for PdfViewer's onPageTextContent prop. */
+  handlePageTextContent: (pageIndex: number, textContent: PdfTextContent) => void
+}
+```
+
 ### 2.3 Types
 
 ```ts
@@ -633,21 +647,17 @@ When a snapped field is **resized**, the snap position is automatically recalcul
 
 ### Enabling snap (recommended)
 
-Add `onPageTextContent` to `PdfViewer` and `textLines` to `FieldOverlay`:
+Use the `usePdfTextLines` hook — pass `pageDimensions` from `usePdfDocument` and wire the two returned values directly to `PdfViewer` and `FieldOverlay`:
 
 ```tsx
-import { groupTextLines, type TextLine } from '@drvillo/react-browser-e-signing'
+import { usePdfTextLines } from '@drvillo/react-browser-e-signing'
 
-const [textLinesByPage, setTextLinesByPage] = useState<Map<number, TextLine[]>>(new Map())
+const { pageDimensions } = usePdfDocument(pdfInput)
+const { textLinesByPage, handlePageTextContent } = usePdfTextLines(pageDimensions)
 
 <PdfViewer
   {...viewerProps}
-  onPageTextContent={(pageIndex, textContent) => {
-    const pageDim = pageDimensions.find((d) => d.pageIndex === pageIndex)
-    if (!pageDim) return
-    const lines = groupTextLines(textContent, pageDim)
-    setTextLinesByPage((prev) => new Map(prev).set(pageIndex, lines))
-  }}
+  onPageTextContent={handlePageTextContent}
   renderOverlay={(pageIndex) => (
     <FieldOverlay
       {...overlayProps}
@@ -658,7 +668,35 @@ const [textLinesByPage, setTextLinesByPage] = useState<Map<number, TextLine[]>>(
 />
 ```
 
-`FieldOverlay` threads `textLines` to each `SignatureField`, which snaps during drag automatically. No other changes are needed.
+`FieldOverlay` threads `textLines` to each `SignatureField`, which snaps during drag automatically. `handlePageTextContent` has a stable identity — it never triggers unnecessary re-renders on `PdfViewer`. The Map resets automatically when a new document is loaded.
+
+<details>
+<summary>Manual wiring (without hook)</summary>
+
+For full control, manage the state yourself using `groupTextLines`:
+
+```tsx
+import { groupTextLines, type TextLine } from '@drvillo/react-browser-e-signing'
+import { useRef, useState, useEffect } from 'react'
+
+const [textLinesByPage, setTextLinesByPage] = useState<Map<number, TextLine[]>>(new Map())
+// Ref avoids stale closure in the callback
+const pageDimensionsRef = useRef(pageDimensions)
+useEffect(() => { pageDimensionsRef.current = pageDimensions }, [pageDimensions])
+
+<PdfViewer
+  onPageTextContent={(pageIndex, textContent) => {
+    const pageDim = pageDimensionsRef.current.find((d) => d.pageIndex === pageIndex)
+    if (!pageDim) return
+    setTextLinesByPage((prev) => new Map(prev).set(pageIndex, groupTextLines(textContent, pageDim)))
+  }}
+  renderOverlay={(pageIndex) => (
+    <FieldOverlay textLines={textLinesByPage.get(pageIndex)} ... />
+  )}
+/>
+```
+
+</details>
 
 ### Disabling snap
 
