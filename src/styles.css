@@ -387,6 +387,10 @@
   background: #2563eb;
 }
 
+[data-slot='snap-guide'] {
+  background: #dc2626;
+}
+
 [data-slot='signing-complete'] {
   display: grid;
   gap: 1rem;

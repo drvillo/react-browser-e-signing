@@ -17,6 +17,7 @@ import {
   usePdfDocument,
   usePdfPageVisibility,
   useSignatureRenderer,
+  groupTextLines,
 } from '../src/index'
 
 configure({ pdfWorkerSrc: getPdfWorkerSrc() })
@@ -28,6 +29,7 @@ import type {
   SignatureStyle,
   SignerInfo,
   SigningResult,
+  TextLine,
 } from '../src/types'
 
 interface SignedDocumentState {
@@ -149,6 +151,13 @@ function SigningArea({
     defaultHeightPercent: defaults.DEFAULT_FIELD_HEIGHT_PERCENT,
     initialFields,
   })
+
+  const [textLinesByPage, setTextLinesByPage] = useState<Map<number, TextLine[]>>(new Map())
+  // Ref keeps the latest pageDimensions accessible in event callbacks (avoids stale closure)
+  const pageDimensionsRef = useRef<PdfPageDimensions[]>(pageDimensions)
+  useEffect(() => {
+    pageDimensionsRef.current = pageDimensions
+  }, [pageDimensions])
 
   /** PRD: readOnly overlay = no new fields on click; locked = per-field no drag/resize/remove. */
   const [overlayReadOnly, setOverlayReadOnly] = useState(false)
@@ -364,6 +373,12 @@ function SigningArea({
               onScaleChange={setScale}
               onDocumentLoadSuccess={handleDocumentLoadSuccess}
               onPageDimensions={({ pageIndex, widthPt, heightPt }) => setPageDimension(pageIndex, widthPt, heightPt)}
+              onPageTextContent={(pageIndex, textContent) => {
+                const pageDim = pageDimensionsRef.current.find((d) => d.pageIndex === pageIndex)
+                if (!pageDim) return
+                const lines = groupTextLines(textContent, pageDim)
+                setTextLinesByPage((prev) => new Map(prev).set(pageIndex, lines))
+              }}
               pageMode={isSinglePageMode ? 'single' : 'scroll'}
               currentPageIndex={activePageIndex}
               renderToolbarContent={
@@ -394,6 +409,7 @@ function SigningArea({
                   onRemoveField={removeField}
                   preview={fieldPreview}
                   readOnly={overlayReadOnly}
+                  textLines={textLinesByPage.get(pageIndex)}
                 />
               )}
             />

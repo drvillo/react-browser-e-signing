@@ -64,3 +64,5 @@ export interface SignatureFieldPreview {
   title: string
   dateText: string
 }
+
+export type { TextLine } from './lib/text-lines'

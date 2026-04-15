@@ -53,4 +53,5 @@ export const SLOTS = {
   signingCompleteActions: 'signing-complete-actions',
   signingCompleteDownload: 'signing-complete-download',
   signingCompleteReset: 'signing-complete-reset',
+  snapGuide: 'snap-guide',
 } as const

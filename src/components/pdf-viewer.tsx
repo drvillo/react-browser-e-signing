@@ -2,6 +2,7 @@ import { Document, Page, pdfjs } from 'react-pdf'
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { getConfig } from '../lib/config'
+import type { PdfTextContent } from '../lib/text-lines'
 import { cn } from '../lib/cn'
 
 interface PdfViewerProps {
@@ -11,6 +12,12 @@ interface PdfViewerProps {
   onScaleChange: (nextScale: number) => void
   onDocumentLoadSuccess: (numPages: number) => void
   onPageDimensions: (input: { pageIndex: number; widthPt: number; heightPt: number }) => void
+  /**
+   * Called after each page's text content is extracted (via PDF.js getTextContent).
+   * Use with `groupTextLines` to enable snap-to-text-line on `FieldOverlay`.
+   * Omit this prop to disable text extraction entirely (no overhead).
+   */
+  onPageTextContent?: (pageIndex: number, textContent: PdfTextContent) => void
   renderOverlay?: (pageIndex: number) => ReactNode
   /** Render extra controls in the toolbar between page count and zoom controls. */
   renderToolbarContent?: () => ReactNode
@@ -34,6 +41,7 @@ export function PdfViewer({
   onScaleChange,
   onDocumentLoadSuccess,
   onPageDimensions,
+  onPageTextContent,
   renderOverlay,
   renderToolbarContent,
   className,
@@ -104,13 +112,18 @@ export function PdfViewer({
                 scale={scale}
                 renderTextLayer={false}
                 renderAnnotationLayer={false}
-                onLoadSuccess={(page) =>
+                onLoadSuccess={(page) => {
                   onPageDimensions({
                     pageIndex,
                     widthPt: page.view[2],
                     heightPt: page.view[3],
                   })
-                }
+                  if (onPageTextContent) {
+                    page.getTextContent().then((textContent) => {
+                      onPageTextContent(pageIndex, textContent as PdfTextContent)
+                    })
+                  }
+                }}
               />
               {renderOverlay?.(pageIndex)}
             </div>

@@ -62,6 +62,23 @@ describe('useFieldPlacement', () => {
     expect(createdField?.heightPercent).toBe(12)
   })
 
+  it('applies taller default height when no override is provided', () => {
+    const { result } = renderHook(() => useFieldPlacement())
+
+    act(() => {
+      result.current.addField({
+        pageIndex: 0,
+        type: 'text',
+        xPercent: 5,
+        yPercent: 5,
+      })
+    })
+
+    const createdField = result.current.fields[0]
+    expect(createdField?.widthPercent).toBe(25)
+    expect(createdField?.heightPercent).toBe(7)
+  })
+
   it('clamps coordinates and dimensions during add and update', () => {
     const { result } = renderHook(() => useFieldPlacement())
 

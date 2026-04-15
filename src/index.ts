@@ -23,6 +23,10 @@ export type { UsePdfPageVisibilityOptions, UsePdfPageVisibilityReturn } from './
 export { modifyPdf } from './lib/pdf-modifier'
 export type { ModifyPdfInput } from './lib/pdf-modifier'
 export { mapToPoints, mapFromPoints } from './lib/coordinate-mapper'
+export { groupTextLines } from './lib/text-lines'
+export type { PdfTextContent } from './lib/text-lines'
+export { snapToTextLine, SNAP_THRESHOLD_PERCENT } from './lib/snap'
+export type { SnapResult } from './lib/snap'
 export { loadSignatureFont, SIGNATURE_FONTS }
 export { sha256 } from './lib/hash'
 export { SLOTS } from './lib/slots'
@@ -35,10 +39,11 @@ export type {
   SigningResult,
   PdfPageDimensions,
   SignatureFieldPreview,
+  TextLine,
 } from './types'
 
 export const defaults = {
   SIGNATURE_FONTS: [...SIGNATURE_FONTS],
   DEFAULT_FIELD_WIDTH_PERCENT: 25,
-  DEFAULT_FIELD_HEIGHT_PERCENT: 5,
+  DEFAULT_FIELD_HEIGHT_PERCENT: 7,
 } as const

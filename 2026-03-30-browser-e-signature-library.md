@@ -248,7 +248,7 @@ export type {
 export const defaults = {
   SIGNATURE_FONTS: ['Dancing Script', 'Great Vibes', 'Sacramento', 'Alex Brush'],
   DEFAULT_FIELD_WIDTH_PERCENT: 25,
-  DEFAULT_FIELD_HEIGHT_PERCENT: 5,
+  DEFAULT_FIELD_HEIGHT_PERCENT: 7,
 } as const
 ```
 

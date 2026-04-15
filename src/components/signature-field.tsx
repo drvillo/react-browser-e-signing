@@ -2,12 +2,24 @@ import { useEffect, useRef, useState } from 'react'
 import type { FieldPlacement, FieldType, SignatureFieldPreview } from '../types'
 import type { KeyboardEvent, PointerEvent } from 'react'
 import { cn } from '../lib/cn'
+import type { TextLine } from '../lib/text-lines'
+import { snapToTextLine } from '../lib/snap'
 
 interface SignatureFieldProps {
   field: FieldPlacement
   onUpdateField: (fieldId: string, partial: Partial<FieldPlacement>) => void
   onRemoveField: (fieldId: string) => void
   preview: SignatureFieldPreview
+  /**
+   * Text lines for this page, used to snap the field's value text baseline to a
+   * nearby text line while dragging. Omit to disable snap.
+   */
+  textLines?: TextLine[]
+  /**
+   * Called during drag with the active snap guide's baseline percent,
+   * or null when snap is not active / drag ends.
+   */
+  onSnapGuide?: (lineBaselinePercent: number | null) => void
   className?: string
 }
 
@@ -61,11 +73,17 @@ export function SignatureField({
   onUpdateField,
   onRemoveField,
   preview,
+  textLines,
+  onSnapGuide,
   className,
 }: SignatureFieldProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)
   const dragStateRef = useRef<DragState | null>(null)
   const resizeStateRef = useRef<ResizeState | null>(null)
+  /** Tracks the text line baseline the field is currently snapped to (persists across drag/resize). */
+  const snappedToBaselineRef = useRef<number | null>(null)
+  /** Cached ratio (0..1) of where the value content's visual center sits within the field height. */
+  const valueCenterRatioRef = useRef<number>(0.5)
   const labelInputRef = useRef<HTMLInputElement | null>(null)
   const valueInputRef = useRef<HTMLInputElement | null>(null)
   const nextLabelModeRef = useRef<EditMode>('idle')
@@ -132,11 +150,33 @@ export function SignatureField({
     setEditMode('idle')
   }
 
+  /**
+   * Measures where the value content's visual center sits within the field,
+   * as a fraction of field height from the top (0 = top, 1 = bottom).
+   * Falls back to 0.5 (geometric center) when DOM measurement isn't possible.
+   */
+  function measureValueCenterRatio(): number {
+    const fieldEl = rootRef.current
+    if (!fieldEl) return 0.5
+    const fieldRect = fieldEl.getBoundingClientRect()
+    if (fieldRect.height === 0) return 0.5
+
+    const valueEl =
+      fieldEl.querySelector('[data-slot="signature-field-preview-image"]') ??
+      fieldEl.querySelector('[data-slot="signature-field-preview-text"]')
+    if (!valueEl) return 0.5
+
+    const valueRect = valueEl.getBoundingClientRect()
+    const valueCenterFromTop = valueRect.top + valueRect.height / 2 - fieldRect.top
+    return Math.max(0, Math.min(1, valueCenterFromTop / fieldRect.height))
+  }
+
   function handleDragPointerDown(event: PointerEvent<HTMLDivElement>): void {
     if (isLocked) return
     event.stopPropagation()
     if (event.button !== 0) return
     if (!rootRef.current?.parentElement) return
+    valueCenterRatioRef.current = measureValueCenterRatio()
     dragStateRef.current = {
       startClientX: event.clientX,
       startClientY: event.clientY,
@@ -156,14 +196,32 @@ export function SignatureField({
     const deltaYPercent = (deltaY / parentElement.clientHeight) * 100
     const maxX = 100 - field.widthPercent
     const maxY = 100 - field.heightPercent
+
+    const rawYPercent = clampPercent(Math.min(maxY, dragStateRef.current.startYPercent + deltaYPercent))
+
+    const { yPercent, snappedLineBaselinePercent } =
+      textLines && textLines.length > 0
+        ? snapToTextLine({
+            candidateYPercent: rawYPercent,
+            fieldHeightPercent: field.heightPercent,
+            textLines,
+            valueCenterRatio: valueCenterRatioRef.current,
+          })
+        : { yPercent: rawYPercent, snappedLineBaselinePercent: null }
+
+    snappedToBaselineRef.current = snappedLineBaselinePercent
+
     onUpdateField(field.id, {
       xPercent: clampPercent(Math.min(maxX, dragStateRef.current.startXPercent + deltaXPercent)),
-      yPercent: clampPercent(Math.min(maxY, dragStateRef.current.startYPercent + deltaYPercent)),
+      yPercent,
     })
+
+    onSnapGuide?.(snappedLineBaselinePercent)
   }
 
   function handleDragPointerUp(event: PointerEvent<HTMLDivElement>): void {
     dragStateRef.current = null
+    onSnapGuide?.(null)
     if (event.currentTarget.hasPointerCapture(event.pointerId))
       event.currentTarget.releasePointerCapture(event.pointerId)
   }
@@ -191,21 +249,39 @@ export function SignatureField({
     const deltaHeightPercent = (deltaY / parentElement.clientHeight) * 100
     const maxWidth = 100 - field.xPercent
     const maxHeight = 100 - field.yPercent
-    onUpdateField(field.id, {
-      widthPercent: clampPercent(
-        Math.min(maxWidth, Math.max(MIN_WIDTH_PERCENT, resizeStateRef.current.startWidthPercent + deltaWidthPercent))
-      ),
-      heightPercent: clampPercent(
-        Math.min(
-          maxHeight,
-          Math.max(MIN_HEIGHT_PERCENT, resizeStateRef.current.startHeightPercent + deltaHeightPercent)
-        )
-      ),
-    })
+    const newWidthPercent = clampPercent(
+      Math.min(maxWidth, Math.max(MIN_WIDTH_PERCENT, resizeStateRef.current.startWidthPercent + deltaWidthPercent))
+    )
+    const newHeightPercent = clampPercent(
+      Math.min(
+        maxHeight,
+        Math.max(MIN_HEIGHT_PERCENT, resizeStateRef.current.startHeightPercent + deltaHeightPercent)
+      )
+    )
+
+    const baseline = snappedToBaselineRef.current
+    if (baseline !== null) {
+      const ratio = valueCenterRatioRef.current
+      const newYPercent = baseline - newHeightPercent * ratio
+      const clampedYPercent = Math.max(0, Math.min(100 - newHeightPercent, newYPercent))
+
+      onUpdateField(field.id, {
+        widthPercent: newWidthPercent,
+        heightPercent: newHeightPercent,
+        yPercent: clampedYPercent,
+      })
+      onSnapGuide?.(baseline)
+    } else {
+      onUpdateField(field.id, {
+        widthPercent: newWidthPercent,
+        heightPercent: newHeightPercent,
+      })
+    }
   }
 
   function handleResizePointerUp(event: PointerEvent<HTMLDivElement>): void {
     resizeStateRef.current = null
+    onSnapGuide?.(null)
     if (event.currentTarget.hasPointerCapture(event.pointerId))
       event.currentTarget.releasePointerCapture(event.pointerId)
   }

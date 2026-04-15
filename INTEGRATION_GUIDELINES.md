@@ -24,6 +24,12 @@ interface PdfViewerProps {
   onScaleChange: (nextScale: number) => void
   onDocumentLoadSuccess: (numPages: number) => void
   onPageDimensions: (input: { pageIndex: number; widthPt: number; heightPt: number }) => void
+  /**
+   * Called after each page's text content is extracted.
+   * Use with `groupTextLines` to enable snap-to-text-line on `FieldOverlay`.
+   * Omit to disable text extraction (no snap, no overhead).
+   */
+  onPageTextContent?: (pageIndex: number, textContent: TextContent) => void
   renderOverlay?: (pageIndex: number) => React.ReactNode
   renderToolbarContent?: () => React.ReactNode
   className?: string
@@ -53,6 +59,13 @@ interface FieldOverlayProps {
   preview: SignatureFieldPreview
   /** When true, clicking the overlay does not add fields (`data-state='readonly'`). */
   readOnly?: boolean
+  /**
+   * Text lines from `groupTextLines` for this page.
+   * When provided, dragged fields snap their value baseline to the nearest line.
+   * A red guide line (`[data-slot="snap-guide"]`) appears while snap is active.
+   * Omit or pass `undefined` to disable snap. Pass `[]` to opt-in but disable at runtime.
+   */
+  textLines?: TextLine[]
   className?: string
 }
 ```
@@ -226,6 +239,16 @@ interface SignatureFieldPreview {
   title: string
   dateText: string
 }
+
+/** A text line extracted from a PDF page, in top-down percent coordinates. */
+interface TextLine {
+  /** Top edge of the line box (top-down, same convention as field yPercent). */
+  yPercent: number
+  /** Height of the line box as a percent of page height. */
+  heightPercent: number
+  /** Baseline position (top-down percent). Used for snap alignment. */
+  baselinePercent: number
+}
 ```
 
 `SignatureField` sets root attributes `data-locked` and `data-has-value` for styling.
@@ -263,6 +286,33 @@ function mapFromPoints(
 
 function loadSignatureFont(fontFamily: string): Promise<void>
 function sha256(data: Uint8Array): Promise<string>
+
+/**
+ * Extracts text line positions from a pdfjs TextContent.
+ * Returns top-down percent coordinates consistent with field placement.
+ * Rotated items and zero-height items are skipped.
+ * Returns [] for scanned/image-only PDFs.
+ */
+function groupTextLines(textContent: TextContent, page: PdfPageDimensions): TextLine[]
+
+/**
+ * Snaps a field's position so its rendered value aligns with the nearest text
+ * line baseline, if within threshold (default 1.5%).
+ *
+ * `valueCenterRatio` (0..1, default 0.5) controls where the value content's
+ * visual center sits within the field — measured from the DOM at drag start
+ * to account for the label, padding, and border that push content below center.
+ */
+function snapToTextLine(params: {
+  candidateYPercent: number
+  fieldHeightPercent: number
+  textLines: TextLine[]
+  valueCenterRatio?: number
+  threshold?: number
+}): { yPercent: number; snappedLineBaselinePercent: number | null }
+
+/** Default snap threshold (page-percent units). */
+const SNAP_THRESHOLD_PERCENT: 1.5
 ```
 
 Per field, if `field.value` is set it is embedded directly (signature as PNG, others as text with a white backing rect). Otherwise values are derived from `signer` / `signatureDataUrl` / `dateText` as in previous releases. You can call `modifyPdf` with only `field.value`-populated fields and omit `signer` and `signatureDataUrl`.
@@ -273,7 +323,7 @@ Per field, if `field.value` is set it is embedded directly (signature as PNG, ot
 const defaults: {
   SIGNATURE_FONTS: readonly string[]
   DEFAULT_FIELD_WIDTH_PERCENT: 25
-  DEFAULT_FIELD_HEIGHT_PERCENT: 5
+  DEFAULT_FIELD_HEIGHT_PERCENT: 7
 }
 ```
 
@@ -333,6 +383,8 @@ const SLOTS = {
   signingCompleteActions: 'signing-complete-actions',
   signingCompleteDownload: 'signing-complete-download',
   signingCompleteReset: 'signing-complete-reset',
+  /** Red guide line rendered across the overlay while a field snaps to a text line. */
+  snapGuide: 'snap-guide',
 } as const
 ```
 
@@ -569,3 +621,79 @@ IF documents are usually 1-2 pages:
 - persist and hydrate `FieldPlacement[]` (including `label`, `value`, `locked`) for templates and multi-step flows
 - optionally build a sidebar for `text` fields that calls `updateField` — the library stays agnostic to that UI
 - validate required fields in app code before calling `modifyPdf`
+- optionally wire `onPageTextContent` + `textLines` for snap-to-text-line alignment (see section 10)
+
+## 10) Snap-to-text alignment
+
+When a user drags a field, the field can snap so the **value text that will appear in the signed PDF** aligns with a nearby line of text in the document. A thin red guide line (`[data-slot="snap-guide"]`) appears across the overlay while snap is active, similar to alignment guides in drawing tools.
+
+Snap works for all field types. The snap reference is the **value content's visual center** within the field — measured from the DOM at drag start to account for the label, padding, and border. This ensures pixel-accurate alignment regardless of field type, label height, or CSS customization.
+
+When a snapped field is **resized**, the snap position is automatically recalculated so the alignment is maintained with the new field dimensions.
+
+### Enabling snap (recommended)
+
+Add `onPageTextContent` to `PdfViewer` and `textLines` to `FieldOverlay`:
+
+```tsx
+import { groupTextLines, type TextLine } from '@drvillo/react-browser-e-signing'
+
+const [textLinesByPage, setTextLinesByPage] = useState<Map<number, TextLine[]>>(new Map())
+
+<PdfViewer
+  {...viewerProps}
+  onPageTextContent={(pageIndex, textContent) => {
+    const pageDim = pageDimensions.find((d) => d.pageIndex === pageIndex)
+    if (!pageDim) return
+    const lines = groupTextLines(textContent, pageDim)
+    setTextLinesByPage((prev) => new Map(prev).set(pageIndex, lines))
+  }}
+  renderOverlay={(pageIndex) => (
+    <FieldOverlay
+      {...overlayProps}
+      pageIndex={pageIndex}
+      textLines={textLinesByPage.get(pageIndex)}
+    />
+  )}
+/>
+```
+
+`FieldOverlay` threads `textLines` to each `SignatureField`, which snaps during drag automatically. No other changes are needed.
+
+### Disabling snap
+
+Two approaches:
+
+1. **Do not pass `textLines`** (or pass `undefined`). This is the zero-code default — existing integrations work unchanged with no text extraction overhead.
+2. **Pass `textLines={[]}`** to disable snap at runtime while keeping the wiring in place (e.g. behind a user toggle).
+
+Snap is per-overlay. Pass `textLines` only for specific pages if needed.
+
+### Scanned / image-only PDFs
+
+`groupTextLines` returns `[]` when the page has no text items (e.g. a scanned image). Snap is silently skipped; no error is thrown.
+
+### Styling the snap guide
+
+The snap guide is a 1px-tall `div` with `data-slot="snap-guide"`. Default styles apply a red background (`#dc2626`). Override via CSS:
+
+```css
+[data-slot='snap-guide'] {
+  background: #7c3aed; /* custom snap guide color */
+}
+```
+
+### Snap threshold and advanced usage
+
+The default snap threshold is **1.5% of page height**. Export `snapToTextLine` and `SNAP_THRESHOLD_PERCENT` are available for advanced integrations (e.g. custom drag implementations):
+
+```ts
+import { snapToTextLine, SNAP_THRESHOLD_PERCENT } from '@drvillo/react-browser-e-signing'
+
+const result = snapToTextLine({
+  candidateYPercent,
+  fieldHeightPercent: field.heightPercent,
+  textLines,
+  threshold: 2.5, // wider than default
+})
+```

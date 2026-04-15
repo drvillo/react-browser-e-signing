@@ -32,7 +32,7 @@ function buildFieldId(): string {
 
 export function useFieldPlacement(options: UseFieldPlacementOptions = {}) {
   const defaultWidthPercent = options.defaultWidthPercent ?? 25
-  const defaultHeightPercent = options.defaultHeightPercent ?? 5
+  const defaultHeightPercent = options.defaultHeightPercent ?? 7
   const [fields, setFieldsState] = useState<FieldPlacement[]>(options.initialFields ?? [])
 
   const setFields = useCallback((nextFields: FieldPlacement[]) => {
