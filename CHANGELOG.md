@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.2
+
+### Fixed
+
+- **`configure({ pdfWorkerSrc })` is now synchronous.** The worker URL is applied to `pdfjs.GlobalWorkerOptions.workerSrc` immediately on the call, instead of inside a `PdfViewer` `useEffect`. Fixes a first-mount race where child `<Document>` effects fired before the parent worker-setup effect, causing `getDocument()` to run with an empty `workerSrc` (intermittent "Loading PDF…" hang on the first load; only worked in dev because StrictMode double-invokes effects).
+- **`PdfViewer`** applies `workerSrc` (prop or config) synchronously during render via the same code path. The previous `useEffect` is removed.
+
+### Added
+
+- **`setPdfWorkerSrc(src)`** exported from the package — idempotent, SSR-safe helper that sets `pdfjs.GlobalWorkerOptions.workerSrc`. Useful for advanced consumers (e.g. setting it before mounting `<Document>` outside of `<PdfViewer>`). Prefer `configure({ pdfWorkerSrc })` for normal usage.
+- Failures to set `GlobalWorkerOptions.workerSrc` (sealed object on some pdfjs builds) are reported via `onWarning` with code `WORKER_SETUP_FAILED` instead of throwing.
+
+### Migration
+
+- No breaking changes. Consumers that previously did `pdfjs.GlobalWorkerOptions.workerSrc = ...` themselves to work around the race can drop that workaround **and** their direct `react-pdf` import.
+
 ## 0.4.1
 
 ### Changed

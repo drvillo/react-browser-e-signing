@@ -1,7 +1,6 @@
-import { Document, Page, pdfjs } from 'react-pdf'
-import { useEffect } from 'react'
+import { Document, Page } from 'react-pdf'
 import type { ReactNode } from 'react'
-import { getConfig } from '../lib/config'
+import { getConfig, setPdfWorkerSrc } from '../lib/config'
 import type { PdfTextContent } from '../lib/text-lines'
 import { cn } from '../lib/cn'
 
@@ -49,12 +48,11 @@ export function PdfViewer({
   pageMode = 'scroll',
   currentPageIndex = 0,
 }: PdfViewerProps) {
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const fromConfig = getConfig().pdfWorkerSrc
-    const next = workerSrc ?? fromConfig
-    if (next) pdfjs.GlobalWorkerOptions.workerSrc = next
-  }, [workerSrc])
+  // Apply workerSrc synchronously during render so it's set before any child
+  // <Document> mounts and triggers `getDocument()`. `setPdfWorkerSrc` is
+  // idempotent and SSR-safe; it's the same module-level mutation react-pdf
+  // recommends in its own setup docs.
+  setPdfWorkerSrc(workerSrc ?? getConfig().pdfWorkerSrc)
 
   if (!pdfData)
     return (
