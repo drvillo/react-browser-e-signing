@@ -9,7 +9,8 @@
 - recommendedWorkerSetup:
   - import `configure` from package
   - import `getPdfWorkerSrc` from `@drvillo/react-browser-e-signing/worker`
-  - call `configure({ pdfWorkerSrc: getPdfWorkerSrc() })`
+  - call `configure({ pdfWorkerSrc: getPdfWorkerSrc() })` once on the client (e.g. module top-level of a client-only file imported before any `<PdfViewer>` renders)
+  - `configure` applies the workerSrc to `pdfjs.GlobalWorkerOptions` synchronously — consumers should **not** import `react-pdf` themselves to set `GlobalWorkerOptions.workerSrc`
 - bundledSignatureFonts: six Latin `woff2` files under `dist/fonts/` (from devDependency `@fontsource/*` at publish build). Optional import path `@drvillo/react-browser-e-signing/fonts/<file>.woff2`. Default `fontMode` loads these via `FontFace` (no Google Fonts request).
 
 ## 2) Full Public API

@@ -4,6 +4,10 @@ import { pdfjs } from 'react-pdf'
 import { PdfViewer } from '../../src/components/pdf-viewer'
 import { configure, resetConfig } from '../../src/lib/config'
 
+// `configure({ pdfWorkerSrc })` and `<PdfViewer workerSrc>` both apply
+// `pdfjs.GlobalWorkerOptions.workerSrc` synchronously (before any child
+// `<Document>` mounts). These tests guard against regressing that contract.
+
 const noop = () => undefined
 
 /** Minimal bytes so react-pdf may error gracefully but the component mounts */
@@ -32,7 +36,7 @@ describe('PdfViewer worker', () => {
     })
   })
 
-  it('applies workerSrc prop', async () => {
+  it('applies workerSrc prop synchronously on first render', () => {
     render(
       <PdfViewer
         workerSrc="/pdf.worker.min.mjs"
@@ -44,13 +48,15 @@ describe('PdfViewer worker', () => {
         onPageDimensions={noop}
       />
     )
-
-    await waitFor(() => {
-      expect(pdfjs.GlobalWorkerOptions.workerSrc).toBe('/pdf.worker.min.mjs')
-    })
+    expect(pdfjs.GlobalWorkerOptions.workerSrc).toBe('/pdf.worker.min.mjs')
   })
 
-  it('applies configure pdfWorkerSrc when prop is unset', async () => {
+  it('applies configure pdfWorkerSrc synchronously, before <PdfViewer> mounts', () => {
+    configure({ pdfWorkerSrc: '/sync-from-config.mjs' })
+    expect(pdfjs.GlobalWorkerOptions.workerSrc).toBe('/sync-from-config.mjs')
+  })
+
+  it('applies configure pdfWorkerSrc when prop is unset', () => {
     configure({ pdfWorkerSrc: '/from-config.mjs' })
 
     render(
@@ -63,13 +69,10 @@ describe('PdfViewer worker', () => {
         onPageDimensions={noop}
       />
     )
-
-    await waitFor(() => {
-      expect(pdfjs.GlobalWorkerOptions.workerSrc).toBe('/from-config.mjs')
-    })
+    expect(pdfjs.GlobalWorkerOptions.workerSrc).toBe('/from-config.mjs')
   })
 
-  it('workerSrc prop overrides configure pdfWorkerSrc', async () => {
+  it('workerSrc prop overrides configure pdfWorkerSrc', () => {
     configure({ pdfWorkerSrc: '/from-config.mjs' })
 
     render(
@@ -83,9 +86,6 @@ describe('PdfViewer worker', () => {
         onPageDimensions={noop}
       />
     )
-
-    await waitFor(() => {
-      expect(pdfjs.GlobalWorkerOptions.workerSrc).toBe('/override.mjs')
-    })
+    expect(pdfjs.GlobalWorkerOptions.workerSrc).toBe('/override.mjs')
   })
 })

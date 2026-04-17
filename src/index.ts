@@ -1,6 +1,6 @@
 import { loadSignatureFont, SIGNATURE_FONTS } from './lib/signature-fonts'
 
-export { configure } from './lib/config'
+export { configure, setPdfWorkerSrc } from './lib/config'
 export type { ESigningConfig, SignatureFontWarning } from './lib/config'
 
 export { PdfViewer } from './components/pdf-viewer'
